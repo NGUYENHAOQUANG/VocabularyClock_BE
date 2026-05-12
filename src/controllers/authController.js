@@ -25,12 +25,10 @@ export const register = async (req, res) => {
         .json({ success: false, message: "Email is already registered" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
-
     const user = await userRepo.createUser({
       name,
       email,
-      password: hashedPassword,
+      password,
       nativeLanguage: nativeLanguage || "eng",
     });
 
@@ -77,7 +75,7 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Account has been deactivated" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res
         .status(401)
@@ -323,10 +321,7 @@ export const resetPassword = async (req, res) => {
     const { token, newPassword } = req.body;
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: new Date() },
-    });
+    const user = await userRepo.findUserByResetToken(hashedToken);
 
     if (!user) {
       return res.status(400).json({
@@ -335,11 +330,11 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    user.password = newPassword;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user.refreshToken = null;
-    await user.save();
+    await userRepo.saveUser(user);
 
     return res.status(200).json({
       success: true,

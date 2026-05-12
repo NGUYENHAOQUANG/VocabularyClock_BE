@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from "bcryptjs";
 
 const UserSchema = new mongoose.Schema(
   {
@@ -40,5 +41,19 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+UserSchema.pre("save", async function (next) {
+  // Chỉ hash password nếu user có nhập password (authType local)
+  if ((this.isModified("password") || this.isNew) && this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+  next();
+});
+
+UserSchema.methods.comparePassword = async function (password) {
+  if (!this.password) return false;
+  return await bcrypt.compare(password, this.password);
+};
 
 export default mongoose.model('User', UserSchema);
