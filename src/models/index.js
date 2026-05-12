@@ -9,4 +9,4 @@ export { default as UserVocabulary } from './UserVocabulary.js';
 export { default as ReviewLog }      from './ReviewLog.js';
 export { default as ScheduledTask }  from './ScheduledTask.js';
 export { default as DailyPlan }      from './DailyPlan.js';
-
+export { default as UserSetProgress } from './UserSetProgress.js';
