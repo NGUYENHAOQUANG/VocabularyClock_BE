@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
-import { User } from "../models/index.js";
+import * as userRepo from "../repositories/userRepository.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -18,7 +18,7 @@ export const register = async (req, res) => {
   try {
     const { name, email, password, nativeLanguage } = req.body;
 
-    const existing = await User.findOne({ email });
+    const existing = await userRepo.findUserByEmail(email);
     if (existing) {
       return res
         .status(409)
@@ -27,7 +27,7 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
+    const user = await userRepo.createUser({
       name,
       email,
       password: hashedPassword,
@@ -38,7 +38,7 @@ export const register = async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     user.refreshToken = refreshToken;
-    await user.save();
+    await userRepo.saveUser(user);
 
     return res.status(201).json({
       success: true,
@@ -64,9 +64,7 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select(
-      "+password +refreshToken",
-    );
+    const user = await userRepo.findUserByEmailWithSecrets(email);
     if (!user || !user.password) {
       return res
         .status(401)
@@ -90,7 +88,7 @@ export const login = async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     user.refreshToken = refreshToken;
-    await user.save();
+    await userRepo.saveUser(user);
 
     return res.status(200).json({
       success: true,
@@ -224,7 +222,7 @@ export const logout = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await userRepo.findUserById(req.user.id);
     if (!user) {
       return res
         .status(404)
@@ -285,7 +283,7 @@ export const changePassword = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await userRepo.findUserByEmail(email);
 
     if (!user) {
       return res.status(200).json({

@@ -1,4 +1,4 @@
-import { Topic, VocabSet, Vocabulary, UserVocabulary } from "../models/index.js";
+import * as myWordsService from "../services/myWordsService.js";
 
 /**
  * GET /api/my-words/topics
@@ -6,9 +6,7 @@ import { Topic, VocabSet, Vocabulary, UserVocabulary } from "../models/index.js"
  */
 export const getMyTopics = async (req, res) => {
   try {
-    const topics = await Topic.find({ ownerId: req.user.id, isSystemTopic: false })
-      .select("-__v -createdAt -updatedAt")
-      .lean();
+    const topics = await myWordsService.getMyTopicsData(req.user.id);
     return res.status(200).json({ success: true, data: topics });
   } catch (err) {
     console.error("[getMyTopics]", err);
@@ -23,13 +21,7 @@ export const getMyTopics = async (req, res) => {
 export const createMyTopic = async (req, res) => {
   try {
     const { name, description, typeId } = req.body;
-    const topic = await Topic.create({
-      name,
-      description,
-      typeId,
-      ownerId: req.user.id,
-      isSystemTopic: false, // Đây là từ vựng cá nhân
-    });
+    const topic = await myWordsService.createMyTopicData(req.user.id, req.body);
     return res.status(201).json({ success: true, data: topic });
   } catch (err) {
     console.error("[createMyTopic]", err);
@@ -44,10 +36,7 @@ export const createMyTopic = async (req, res) => {
 export const getMySets = async (req, res) => {
   try {
     const { id: topicId } = req.params;
-    const sets = await VocabSet.find({ topicId, ownerId: req.user.id, isSystemSet: false })
-      .select("-__v -createdAt -updatedAt")
-      .sort({ order: 1 })
-      .lean();
+    const sets = await myWordsService.getMySetsData(topicId, req.user.id);
     return res.status(200).json({ success: true, data: sets });
   } catch (err) {
     console.error("[getMySets]", err);
@@ -61,24 +50,10 @@ export const getMySets = async (req, res) => {
  */
 export const createMySet = async (req, res) => {
   try {
-    const { name, description, topicId } = req.body;
-    
-    // Kiểm tra bảo mật: đảm bảo user đang thêm Set vào đúng Topic của họ
-    const topicExists = await Topic.exists({ _id: topicId, ownerId: req.user.id });
-    if (!topicExists) {
+    const newSet = await myWordsService.createMySetData(req.user.id, req.body);
+    if (!newSet) {
       return res.status(404).json({ success: false, message: "Topic not found or unauthorized" });
     }
-
-    const newSet = await VocabSet.create({
-      name,
-      description,
-      topicId,
-      ownerId: req.user.id,
-      isSystemSet: false,
-    });
-    
-    // Cập nhật thống kê totalSets cho Topic
-    await Topic.findByIdAndUpdate(topicId, { $inc: { totalSets: 1 } });
 
     return res.status(201).json({ success: true, data: newSet });
   } catch (err) {
@@ -94,9 +69,7 @@ export const createMySet = async (req, res) => {
 export const getMyVocabs = async (req, res) => {
   try {
     const { id: setId } = req.params;
-    const vocabs = await Vocabulary.find({ setId, ownerId: req.user.id, isSystemVocab: false })
-      .select("-__v -createdAt -updatedAt")
-      .lean();
+    const vocabs = await myWordsService.getMyVocabsData(setId, req.user.id);
     return res.status(200).json({ success: true, data: vocabs });
   } catch (err) {
     console.error("[getMyVocabs]", err);
@@ -112,44 +85,14 @@ export const createMyVocab = async (req, res) => {
   try {
     const { setId, content, type, meaning, phonetic, partOfSpeech, examples, level, tags, imageUrl } = req.body;
     
-    // Kiểm tra bảo mật: đảm bảo user đang thêm từ vào đúng Set của họ
-    const vocabSet = await VocabSet.findOne({ _id: setId, ownerId: req.user.id });
-    if (!vocabSet) {
+    const newVocab = await myWordsService.createMyVocabData(req.user.id, req.body);
+    if (!newVocab) {
       return res.status(404).json({ success: false, message: "Vocab set not found or unauthorized" });
     }
 
-    // 1. Tạo từ vựng
-    const vocab = await Vocabulary.create({
-      setId,
-      content,
-      type,
-      meaning,
-      phonetic,
-      partOfSpeech,
-      examples,
-      level,
-      tags,
-      imageUrl,
-      ownerId: req.user.id,
-      isSystemVocab: false,
-    });
+    return res.status(201).json({ success: true, data: newVocab });
 
-    // 2. Cập nhật thống kê số lượng từ cho VocabSet và Topic
-    vocabSet.itemCount += 1;
-    await vocabSet.save();
-    await Topic.findByIdAndUpdate(vocabSet.topicId, { $inc: { totalItems: 1 } });
 
-    // 3. RẤT QUAN TRỌNG: Khi user tạo từ, chúng ta phải khởi tạo tiến trình học cho từ này
-    // (Lưu vào bảng UserVocabulary với status = 'new') để module SRS có thể pick lên và nhắc nhở
-    await UserVocabulary.create({
-      userId: req.user.id,
-      vocabId: vocab._id,
-      setId: setId,
-      vocabType: type,
-      status: "new"
-    });
-
-    return res.status(201).json({ success: true, data: vocab });
   } catch (err) {
     console.error("[createMyVocab]", err);
     return res.status(500).json({ success: false, message: "Internal server error" });
@@ -164,11 +107,7 @@ export const createMyVocab = async (req, res) => {
  */
 export const updateMyTopic = async (req, res) => {
   try {
-    const topic = await Topic.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user.id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const topic = await myWordsService.updateMyTopicData(req.params.id, req.user.id, req.body);
     if (!topic) return res.status(404).json({ success: false, message: "Topic not found or unauthorized" });
     return res.status(200).json({ success: true, data: topic });
   } catch (err) {
@@ -182,17 +121,7 @@ export const updateMyTopic = async (req, res) => {
  */
 export const deleteMyTopic = async (req, res) => {
   try {
-    const topic = await Topic.findOneAndDelete({ _id: req.params.id, ownerId: req.user.id });
-    if (!topic) return res.status(404).json({ success: false, message: "Topic not found or unauthorized" });
-
-    // Lấy ID tất cả các Set thuộc Topic này
-    const sets = await VocabSet.find({ topicId: topic._id }).select('_id');
-    const setIds = sets.map(s => s._id);
-
-    // Xóa liên đới
-    await VocabSet.deleteMany({ topicId: topic._id });
-    await Vocabulary.deleteMany({ setId: { $in: setIds } });
-    await UserVocabulary.deleteMany({ setId: { $in: setIds }, userId: req.user.id });
+    const topic = await myWordsService.deleteMyTopicData(req.params.id, req.user.id);
 
     return res.status(200).json({ success: true, message: "Topic deleted successfully" });
   } catch (err) {
@@ -206,11 +135,7 @@ export const deleteMyTopic = async (req, res) => {
  */
 export const updateMySet = async (req, res) => {
   try {
-    const set = await VocabSet.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user.id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const set = await myWordsService.updateMySetData(req.params.id, req.user.id, req.body);
     if (!set) return res.status(404).json({ success: false, message: "Set not found or unauthorized" });
     return res.status(200).json({ success: true, data: set });
   } catch (err) {
@@ -224,17 +149,8 @@ export const updateMySet = async (req, res) => {
  */
 export const deleteMySet = async (req, res) => {
   try {
-    const set = await VocabSet.findOneAndDelete({ _id: req.params.id, ownerId: req.user.id });
+    const set = await myWordsService.deleteMySetData(req.params.id, req.user.id);
     if (!set) return res.status(404).json({ success: false, message: "Set not found or unauthorized" });
-
-    // Cập nhật lại số lượng cho Topic
-    await Topic.findByIdAndUpdate(set.topicId, { 
-      $inc: { totalSets: -1, totalItems: -set.itemCount } 
-    });
-
-    // Xóa liên đới
-    await Vocabulary.deleteMany({ setId: set._id });
-    await UserVocabulary.deleteMany({ setId: set._id, userId: req.user.id });
 
     return res.status(200).json({ success: true, message: "Vocab set deleted successfully" });
   } catch (err) {
@@ -248,11 +164,7 @@ export const deleteMySet = async (req, res) => {
  */
 export const updateMyVocab = async (req, res) => {
   try {
-    const vocab = await Vocabulary.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user.id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const vocab = await myWordsService.updateMyVocabData(req.params.id, req.user.id, req.body);
     if (!vocab) return res.status(404).json({ success: false, message: "Vocab not found or unauthorized" });
     return res.status(200).json({ success: true, data: vocab });
   } catch (err) {
@@ -266,19 +178,8 @@ export const updateMyVocab = async (req, res) => {
  */
 export const deleteMyVocab = async (req, res) => {
   try {
-    const vocab = await Vocabulary.findOneAndDelete({ _id: req.params.id, ownerId: req.user.id });
+    const vocab = await myWordsService.deleteMyVocabData(req.params.id, req.user.id);
     if (!vocab) return res.status(404).json({ success: false, message: "Vocab not found or unauthorized" });
-
-    // Xóa tiến trình học (bảng UserVocabulary)
-    await UserVocabulary.deleteMany({ vocabId: vocab._id, userId: req.user.id });
-
-    // Giảm số lượng từ vựng ở VocabSet
-    const vocabSet = await VocabSet.findByIdAndUpdate(vocab.setId, { $inc: { itemCount: -1 } });
-    
-    // Giảm số lượng từ vựng ở Topic
-    if (vocabSet) {
-      await Topic.findByIdAndUpdate(vocabSet.topicId, { $inc: { totalItems: -1 } });
-    }
 
     return res.status(200).json({ success: true, message: "Vocabulary deleted successfully" });
   } catch (err) {

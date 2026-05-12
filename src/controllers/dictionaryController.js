@@ -1,4 +1,4 @@
-import { Topic, VocabSet, Vocabulary } from "../models/index.js";
+import * as dictionaryService from "../services/dictionaryService.js";
 
 /**
  * GET /api/topics
@@ -7,9 +7,7 @@ import { Topic, VocabSet, Vocabulary } from "../models/index.js";
  */
 export const getSystemTopics = async (req, res) => {
   try {
-    const topics = await Topic.find({ isSystemTopic: true })
-      .select("name description color imageUrl typeId totalSets totalItems")
-      .lean();
+    const topics = await dictionaryService.getSystemTopicsData();
 
     return res.status(200).json({ success: true, data: topics });
   } catch (err) {
@@ -27,16 +25,10 @@ export const getSystemSetsByTopic = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Kiểm tra Topic có tồn tại và có phải là hệ thống không
-    const topicExists = await Topic.exists({ _id: id, isSystemTopic: true });
-    if (!topicExists) {
+    const sets = await dictionaryService.getSystemSetsByTopicData(id);
+    if (!sets) {
       return res.status(404).json({ success: false, message: "Topic not found" });
     }
-
-    const sets = await VocabSet.find({ topicId: id, isSystemSet: true })
-      .select("name description itemCount order")
-      .sort({ order: 1 })
-      .lean();
 
     return res.status(200).json({ success: true, data: sets });
   } catch (err) {
@@ -53,16 +45,10 @@ export const getSystemVocabsBySet = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Kiểm tra Set có tồn tại và có phải là hệ thống không
-    const setExists = await VocabSet.exists({ _id: id, isSystemSet: true });
-    if (!setExists) {
+    const vocabularies = await dictionaryService.getSystemVocabsBySetData(id);
+    if (!vocabularies) {
       return res.status(404).json({ success: false, message: "Vocab set not found" });
     }
-
-    const vocabularies = await Vocabulary.find({ setId: id, isSystemVocab: true })
-      // Bỏ đi các trường không cần thiết để tối ưu dung lượng response
-      .select("-ownerId -isSystemVocab -createdAt -updatedAt -__v")
-      .lean();
 
     return res.status(200).json({ success: true, data: vocabularies });
   } catch (err) {
