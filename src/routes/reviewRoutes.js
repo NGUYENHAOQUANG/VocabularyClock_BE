@@ -3,6 +3,8 @@ import {
   getDashboardStats,
   getLearnedWords,
   getDueTasks,
+  getReviewSetWords,
+  getReviewHistory,
   markWordRemembered,
   completeSetReview
 } from "../controllers/reviewController.js";
@@ -17,8 +19,10 @@ router.use(protect);
 
 // ── GET ────────────────────────────────────────────────────────
 router.get("/dashboard", getDashboardStats);
+router.get("/history", getReviewHistory);
 router.get("/learned-words", getLearnedWords);
 router.get("/due-tasks", getDueTasks);
+router.get("/sets/:setId/words", getReviewSetWords);
 
 // ── POST ───────────────────────────────────────────────────────
 router.post("/words/:id/mark-remembered", validate(markRememberedSchema), markWordRemembered);

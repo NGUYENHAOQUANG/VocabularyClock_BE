@@ -8,5 +8,14 @@ export const markRememberedSchema = z.object({
 });
 
 export const completeSetSchema = z.object({
-  // No body needed strictly, but if we need to pass time spent or something later we can add here
+  sessionType: z.enum(['learning', 'review'], { required_error: "sessionType is required" }),
+  sessionId: z.string({ required_error: "sessionId is required" }).min(1),
+  logs: z.array(
+    z.object({
+      vocabId: z.string().length(24, "Invalid vocabId"),
+      result: z.enum(['again', 'hard', 'good', 'easy']),
+      actionType: z.enum(['flashcard', 'quiz', 'writing', 'typing']),
+      responseTime: z.number().optional()
+    })
+  ).optional() // Không bắt buộc nếu người dùng chưa học gì mà thoát
 });

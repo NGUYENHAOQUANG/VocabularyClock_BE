@@ -24,10 +24,21 @@ const ReviewLogSchema = new mongoose.Schema(
       ref: 'Vocabulary',
       required: true,
     },
+    setId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VocabSet',
+      required: true,
+      index: true,
+    },
 
     // ── Gộp các lần ôn trong cùng 1 phiên ─────────────────────────
     // Dùng để group thành ReviewHistorySession trên FE
     sessionId: { type: String, required: true },
+    sessionType: { 
+      type: String, 
+      enum: ['learning', 'review'], 
+      required: true 
+    },
 
     // ── Kết quả đánh giá của người dùng ────────────────────────────
     result: {
