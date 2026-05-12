@@ -1,0 +1,443 @@
+{
+  "info": {
+    "name": "Vocabulary Clock API",
+    "_postman_id": "vocab-clock-api-collection",
+    "description": "Toàn bộ API của Vocabulary Clock App. Import vào Postman để test.\n\n**Hướng dẫn sử dụng:**\n1. Import file này vào Postman\n2. Vào tab Variables → set `baseUrl` = http://localhost:5000\n3. Chạy Register hoặc Login trước → accessToken tự động được lưu\n4. Các request 🔒 tự động dùng accessToken đã lưu",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:5000", "type": "string" },
+    { "key": "accessToken",  "value": "",                      "type": "string" },
+    { "key": "refreshToken", "value": "",                      "type": "string" },
+    { "key": "resetToken",   "value": "",                      "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "🔑 Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  pm.test('Register thành công', () => pm.expect(json.success).to.be.true);",
+                  "  pm.test('Có accessToken', () => pm.expect(json.data.accessToken).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyen Van A\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"nativeLanguage\": \"vi\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  pm.test('Login thành công', () => pm.expect(json.success).to.be.true);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Sai mật khẩu (expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Validation lỗi (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Me 🔒",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get Me thành công', () => {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(pm.response.json().data.user.email).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Get Me - Không có token (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "  pm.test('Refresh token thành công', () => pm.expect(json.success).to.be.true);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh-token"] }
+          }
+        },
+        {
+          "name": "Change Password 🔒",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newPassword456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "change-password"] }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Forgot password response OK', () => {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(pm.response.json().success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "forgot-password"] }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "description": "Lấy token từ console log của server sau khi gọi Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"resetPassword789\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "reset-password"] }
+          }
+        },
+        {
+          "name": "Google Auth",
+          "description": "Cần idToken thật từ Google Sign-In SDK trên FE. Dùng để test khi đã tích hợp.",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<google_id_token_here>\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/google", "host": ["{{baseUrl}}"], "path": ["api", "auth", "google"] }
+          }
+        },
+        {
+          "name": "Logout 🔒",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('accessToken', '');",
+                  "  pm.collectionVariables.set('refreshToken', '');",
+                  "  pm.test('Logout thành công', () => pm.expect(pm.response.json().success).to.be.true);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Dictionary (Coming Soon)",
+      "description": "Các API về Topic, VocabSet, Vocabulary sẽ được thêm ở đây.",
+      "item": [
+        {
+          "name": "GET /api/topics 🔒",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/topics", "host": ["{{baseUrl}}"], "path": ["api", "topics"] }
+          }
+        },
+        {
+          "name": "GET /api/topics/:id/sets 🔒",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/topics/:id/sets", "host": ["{{baseUrl}}"], "path": ["api", "topics", ":id", "sets"], "variable": [{ "key": "id", "value": "<topicId>" }] }
+          }
+        },
+        {
+          "name": "GET /api/sets/:id/vocabularies 🔒",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/sets/:id/vocabularies", "host": ["{{baseUrl}}"], "path": ["api", "sets", ":id", "vocabularies"], "variable": [{ "key": "id", "value": "<setId>" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 My Words (Coming Soon)",
+      "description": "CRUD từ vựng do người dùng tự tạo.",
+      "item": [
+        {
+          "name": "GET /api/my-words/topics 🔒",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/my-words/topics", "host": ["{{baseUrl}}"], "path": ["api", "my-words", "topics"] }
+          }
+        },
+        {
+          "name": "POST /api/my-words/vocabularies 🔒",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setId\": \"<setId>\",\n  \"content\": \"Ghosting\",\n  \"type\": \"vocabulary\",\n  \"meaning\": \"Cắt đứt liên lạc đột ngột\",\n  \"phonetic\": \"/ˈɡoʊstɪŋ/\",\n  \"partOfSpeech\": \"verb\",\n  \"examples\": [\n    {\n      \"en\": \"He ghosted me after our second date.\",\n      \"translations\": { \"vi\": \"Anh ấy đã bơ tôi sau buổi hẹn hò thứ hai.\" }\n    }\n  ],\n  \"level\": \"B1\",\n  \"tags\": [\"slang\", \"social\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/my-words/vocabularies", "host": ["{{baseUrl}}"], "path": ["api", "my-words", "vocabularies"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔄 Review / SRS (Coming Soon)",
+      "description": "API ôn tập từ vựng theo thuật toán SRS.",
+      "item": [
+        {
+          "name": "GET /api/review/due-sets 🔒",
+          "description": "Lấy danh sách bộ từ có từ đến hạn ôn hôm nay",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/review/due-sets", "host": ["{{baseUrl}}"], "path": ["api", "review", "due-sets"] }
+          }
+        },
+        {
+          "name": "POST /api/review/submit 🔒",
+          "description": "Gửi kết quả ôn tập 1 từ → backend tính SRS và cập nhật nextReviewDate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vocabId\": \"<vocabId>\",\n  \"result\": \"good\",\n  \"actionType\": \"flashcard\",\n  \"sessionId\": \"session_abc123\",\n  \"responseTime\": 1200\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/review/submit", "host": ["{{baseUrl}}"], "path": ["api", "review", "submit"] }
+          }
+        },
+        {
+          "name": "GET /api/review/stats 🔒",
+          "description": "Thống kê từ vựng theo 7 trạng thái SRS (cho biểu đồ donut trên FE)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/review/stats", "host": ["{{baseUrl}}"], "path": ["api", "review", "stats"] }
+          }
+        },
+        {
+          "name": "GET /api/review/history 🔒",
+          "description": "Lịch sử các phiên ôn tập",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/review/history", "host": ["{{baseUrl}}"], "path": ["api", "review", "history"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Scheduled Tasks (Coming Soon)",
+      "description": "Quản lý lịch trình học và báo thức.",
+      "item": [
+        {
+          "name": "GET /api/scheduled-tasks 🔒",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/scheduled-tasks", "host": ["{{baseUrl}}"], "path": ["api", "scheduled-tasks"] }
+          }
+        },
+        {
+          "name": "POST /api/scheduled-tasks 🔒",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ôn tập buổi tối\",\n  \"time\": \"20:00\",\n  \"setIds\": [],\n  \"methods\": [\"flashcard\", \"rewrite\"],\n  \"repeatDays\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\"],\n  \"reminderEnabled\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/scheduled-tasks", "host": ["{{baseUrl}}"], "path": ["api", "scheduled-tasks"] }
+          }
+        },
+        {
+          "name": "PATCH /api/scheduled-tasks/:id 🔒",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/scheduled-tasks/:id", "host": ["{{baseUrl}}"], "path": ["api", "scheduled-tasks", ":id"], "variable": [{ "key": "id", "value": "<taskId>" }] }
+          }
+        },
+        {
+          "name": "DELETE /api/scheduled-tasks/:id 🔒",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/scheduled-tasks/:id", "host": ["{{baseUrl}}"], "path": ["api", "scheduled-tasks", ":id"], "variable": [{ "key": "id", "value": "<taskId>" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚙️ Health Check",
+      "item": [
+        {
+          "name": "GET / (API Status)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('API đang chạy', () => {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(pm.response.json().success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [""] }
+          }
+        },
+        {
+          "name": "GET /unknown-route (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/unknown", "host": ["{{baseUrl}}"], "path": ["api", "unknown"] }
+          }
+        }
+      ]
+    }
+  ]
+}

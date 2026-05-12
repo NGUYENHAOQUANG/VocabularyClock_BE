@@ -26,7 +26,6 @@ const VocabSetSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
-      index: true,
     },
     isSystemSet: { type: Boolean, default: true },
 

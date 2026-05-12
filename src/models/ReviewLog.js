@@ -27,7 +27,7 @@ const ReviewLogSchema = new mongoose.Schema(
 
     // ── Gộp các lần ôn trong cùng 1 phiên ─────────────────────────
     // Dùng để group thành ReviewHistorySession trên FE
-    sessionId: { type: String, required: true, index: true },
+    sessionId: { type: String, required: true },
 
     // ── Kết quả đánh giá của người dùng ────────────────────────────
     result: {
