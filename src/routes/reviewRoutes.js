@@ -2,7 +2,6 @@ import { Router } from "express";
 import {
   getDashboardStats,
   getLearnedWords,
-  getDailySchedule,
   getDueTasks,
   markWordRemembered,
   completeSetReview
@@ -19,7 +18,6 @@ router.use(protect);
 // ── GET ────────────────────────────────────────────────────────
 router.get("/dashboard", getDashboardStats);
 router.get("/learned-words", getLearnedWords);
-router.get("/daily-schedule", getDailySchedule);
 router.get("/due-tasks", getDueTasks);
 
 // ── POST ───────────────────────────────────────────────────────

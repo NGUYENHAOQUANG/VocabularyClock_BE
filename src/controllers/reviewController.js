@@ -157,44 +157,6 @@ export const getLearnedWords = async (req, res) => {
 };
 
 /**
- * GET /api/review/daily-schedule
- * Lịch trình hôm nay (Hình 5)
- */
-export const getDailySchedule = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    // Tạm thời lấy tất cả task trong bảng ScheduledTask
-    const tasks = await ScheduledTask.find({ userId }).populate('setIds', 'itemCount').lean();
-
-    const formattedTasks = tasks.map(task => {
-      const setsCount = task.setIds.length;
-      const totalWords = task.setIds.reduce((sum, set) => sum + (set.itemCount || 0), 0);
-      return {
-        _id: task._id,
-        name: task.name,
-        time: task.time,
-        status: task.status, // todo, done
-        setsCount,
-        totalWords
-      };
-    });
-
-    const completedTasks = formattedTasks.filter(t => t.status === 'done').length;
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        progress: `${completedTasks}/${formattedTasks.length} Task`,
-        tasks: formattedTasks
-      }
-    });
-  } catch (err) {
-    console.error("[getDailySchedule]", err);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
  * GET /api/review/due-tasks
  * Bộ từ cần ôn nhóm theo Lịch trình (Hình 4)
  */
