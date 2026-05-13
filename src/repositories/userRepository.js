@@ -49,3 +49,14 @@ export const deleteUserById = async (id) => {
     User.findByIdAndDelete(id)
   ]);
 };
+
+export const deleteUserData = async (id) => {
+  // Chỉ xoá dữ liệu học tập, giữ lại tài khoản User
+  await Promise.all([
+    UserVocabulary.deleteMany({ user: id }),
+    ReviewLog.deleteMany({ user: id }),
+    ScheduledTask.deleteMany({ user: id }),
+    DailyPlan.deleteMany({ user: id }),
+    UserSetProgress.deleteMany({ user: id })
+  ]);
+};

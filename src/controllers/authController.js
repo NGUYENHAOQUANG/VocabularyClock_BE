@@ -439,3 +439,30 @@ export const deleteAccount = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /api/auth/me/data
+// ─────────────────────────────────────────────────────────────────────────────
+export const deleteData = async (req, res) => {
+  try {
+    const user = await userRepo.findUserById(req.user.id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // Xoá tất cả dữ liệu học tập
+    await userRepo.deleteUserData(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Data deleted successfully",
+    });
+  } catch (err) {
+    console.error("[deleteData]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};

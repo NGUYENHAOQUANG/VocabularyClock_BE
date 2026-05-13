@@ -12,6 +12,7 @@ import {
   forgotPassword,
   resetPassword,
   deleteAccount,
+  deleteData,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -38,6 +39,7 @@ router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateProfile);
 router.delete("/me", protect, deleteAccount);
+router.delete("/me/data", protect, deleteData);
 router.patch("/settings", protect, updateSettings);
 router.post("/logout", protect, logout);
 router.post(
