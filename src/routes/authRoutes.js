@@ -11,6 +11,7 @@ import {
   changePassword,
   forgotPassword,
   resetPassword,
+  deleteAccount,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -36,6 +37,7 @@ router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 // ── Protected routes (cần đăng nhập) ────────────────────────────
 router.get("/me", protect, getMe);
 router.patch("/me", protect, updateProfile);
+router.delete("/me", protect, deleteAccount);
 router.patch("/settings", protect, updateSettings);
 router.post("/logout", protect, logout);
 router.post(

@@ -1,4 +1,11 @@
-import User from "../models/User.js";
+import { 
+  User, 
+  UserVocabulary, 
+  ReviewLog, 
+  ScheduledTask, 
+  DailyPlan, 
+  UserSetProgress 
+} from "../models/index.js";
 
 export const findUserByEmail = (email) => {
   return User.findOne({ email });
@@ -29,4 +36,16 @@ export const createUser = (data) => {
 
 export const saveUser = (userDoc) => {
   return userDoc.save();
+};
+
+export const deleteUserById = async (id) => {
+  // Xoá tất cả dữ liệu liên quan đến user để tránh rác Database
+  await Promise.all([
+    UserVocabulary.deleteMany({ user: id }),
+    ReviewLog.deleteMany({ user: id }),
+    ScheduledTask.deleteMany({ user: id }),
+    DailyPlan.deleteMany({ user: id }),
+    UserSetProgress.deleteMany({ user: id }),
+    User.findByIdAndDelete(id)
+  ]);
 };
