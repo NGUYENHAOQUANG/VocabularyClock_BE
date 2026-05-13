@@ -23,10 +23,10 @@ export const findUserByIdWithSecrets = (id) => {
   return User.findById(id).select("+password +refreshToken");
 };
 
-export const findUserByResetToken = (token) => {
+export const findUserByResetOTP = (otp) => {
   return User.findOne({
-    resetPasswordToken: token,
-    resetPasswordExpires: { $gt: Date.now() },
+    passwordResetToken: otp,
+    passwordResetExpires: { $gt: Date.now() },
   });
 };
 

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import * as userRepo from "../repositories/userRepository.js";
+import { sendPasswordResetEmail } from "../services/emailService.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -355,20 +356,32 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.passwordResetToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.passwordResetToken = otp;
     user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
-    await user.save();
+    await userRepo.saveUser(user);
 
-    // TODO: Send email with resetToken
-    console.log("[forgotPassword] Reset token:", resetToken);
+    // Bắt đầu gửi email (có xử lý nếu chưa cấu hình .env)
+    try {
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await sendPasswordResetEmail(email, otp);
+      } else {
+        console.warn('⚠️ [CẢNH BÁO]: Chưa cấu hình EMAIL_USER và EMAIL_PASS trong .env! Bỏ qua bước gửi email thật.');
+      }
+    } catch (emailError) {
+      console.error("[forgotPassword] Lỗi gửi email:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Không thể gửi email OTP lúc này, vui lòng thử lại sau.",
+      });
+    }
+
+    console.log(`[forgotPassword] MÃ OTP ĐẶT LẠI MẬT KHẨU CHO EMAIL ${email}:`, otp);
 
     return res.status(200).json({
       success: true,
-      message: "If that email exists, a reset link has been sent.",
+      message: "If that email exists, an OTP has been sent.",
+      devOtp: otp, // Tạm thời trả về để frontend tự điền (bỏ đi khi lên production)
     });
   } catch (err) {
     console.error("[forgotPassword]", err);
@@ -383,22 +396,21 @@ export const forgotPassword = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
+    const { email, otp, newPassword } = req.body;
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-    const user = await userRepo.findUserByResetToken(hashedToken);
+    const user = await userRepo.findUserByResetOTP(otp);
 
-    if (!user) {
+    if (!user || user.email !== email) {
       return res.status(400).json({
         success: false,
-        message: "Reset token is invalid or has expired",
+        message: "Mã OTP không hợp lệ hoặc đã hết hạn.",
       });
     }
 
     user.password = newPassword;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
-    user.refreshToken = null;
+    user.refreshToken = null; // Bắt đăng nhập lại trên mọi thiết bị
     await userRepo.saveUser(user);
 
     return res.status(200).json({
