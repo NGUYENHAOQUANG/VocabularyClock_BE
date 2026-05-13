@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import * as reviewLogRepo from "../repositories/reviewLogRepository.js";
 import * as userSetProgressRepo from "../repositories/userSetProgressRepository.js";
 import * as scheduledTaskRepo from "../repositories/scheduledTaskRepository.js";
@@ -165,4 +166,21 @@ export const completeSetReviewData = async (userId, setId, sessionType, sessionI
   await userVocabularyRepo.resetRememberedFlags(userId, setId);
 
   return progress;
+};
+
+/**
+ * Lấy danh sách các bộ từ user đang học (UserSetProgress) — phục vụ LearnedWordsListScreen (Theo bộ từ)
+ */
+export const getUserSetsData = async (userId) => {
+  const progresses = await userSetProgressRepo.findAllProgressByUser(userId);
+  return progresses.map((p) => ({
+    _id: p.setId?._id,
+    name: p.setId?.name,
+    itemCount: p.setId?.itemCount,
+    image: p.setId?.image,
+    coverImage: p.setId?.coverImage,
+    status: p.status,
+    reviewCount: p.reviewCount,
+    nextReviewDate: p.nextReviewDate,
+  }));
 };

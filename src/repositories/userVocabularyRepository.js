@@ -90,3 +90,8 @@ export const deleteUserVocabsBySets = (setIds, userId) => {
 export const deleteUserVocab = (vocabId, userId) => {
   return UserVocabulary.findOneAndDelete({ vocabId, userId });
 };
+
+/** Lấy tất cả UserVocabulary của 1 user trong 1 bộ từ (cho practice game) */
+export const findUserVocabsBySet = (userId, setId) => {
+  return UserVocabulary.find({ userId, setId }).lean();
+};

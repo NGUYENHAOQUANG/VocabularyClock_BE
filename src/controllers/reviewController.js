@@ -140,10 +140,28 @@ export const completeSetReview = async (req, res) => {
  */
 export const getReviewHistory = async (req, res) => {
   try {
+    const userId = req.user.id;
     const formattedHistory = await reviewService.getReviewHistoryData(userId);
     return res.status(200).json({ success: true, data: formattedHistory });
   } catch (err) {
     console.error("[getReviewHistory]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * GET /api/review/sets
+ * Lấy danh sách các bộ từ user đang học (phục vụ LearnedWordsListScreen - Theo bộ từ)
+ */
+export const getUserSets = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const sets = await reviewService.getUserSetsData(userId);
+    return res.status(200).json({ success: true, data: sets });
+  } catch (err) {
+    console.error("[getUserSets]", err);
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });

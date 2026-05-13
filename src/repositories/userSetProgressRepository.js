@@ -38,3 +38,10 @@ export const createProgress = (data) => {
 export const saveProgress = (progressDocument) => {
   return progressDocument.save();
 };
+
+/** Lấy tất cả bộ từ mà user đang học (UserSetProgress) kèm thông tin bộ từ */
+export const findAllProgressByUser = (userId) => {
+  return UserSetProgress.find({ userId })
+    .populate('setId', 'name itemCount image coverImage')
+    .lean();
+};

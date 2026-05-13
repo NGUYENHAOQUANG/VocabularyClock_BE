@@ -9,6 +9,7 @@ import dictionaryRoutes from './routes/dictionaryRoutes.js';
 import myWordsRoutes from './routes/myWordsRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import scheduleRoutes from './routes/scheduleRoutes.js';
+import practiceRoutes from './routes/practiceRoutes.js';
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -88,6 +89,7 @@ app.use('/api', dictionaryRoutes);
 app.use('/api/my-words', myWordsRoutes);
 app.use('/api/review', reviewRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // ── 11. 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {

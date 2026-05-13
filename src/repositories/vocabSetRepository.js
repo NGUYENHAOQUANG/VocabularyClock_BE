@@ -14,10 +14,24 @@ export const findMySets = (topicId, userId) => {
     .lean();
 };
 
+/** Lấy tất cả bộ từ hệ thống trong 1 chủ đề */
 export const findSystemSets = (topicId) => {
+  if (!topicId) {
+    return VocabSet.find({ isSystemSet: true })
+      .select("name description itemCount order topicId")
+      .sort({ order: 1 })
+      .lean();
+  }
   return VocabSet.find({ topicId, isSystemSet: true })
     .select("name description itemCount order")
     .sort({ order: 1 })
+    .lean();
+};
+
+/** Lấy tất cả bộ từ cá nhân của user (không lọc theo chủ đề) */
+export const findMySetsAll = (userId) => {
+  return VocabSet.find({ ownerId: userId, isSystemSet: false })
+    .select('name itemCount topicId image coverImage')
     .lean();
 };
 

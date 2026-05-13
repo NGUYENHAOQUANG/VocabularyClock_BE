@@ -203,7 +203,9 @@ export const refreshToken = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const logout = async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user.id, { refreshToken: null });
+    await userRepo.findUserById(req.user.id).then(u => {
+      if (u) { u.refreshToken = null; return userRepo.saveUser(u); }
+    });
     return res
       .status(200)
       .json({ success: true, message: "Logged out successfully" });
@@ -234,6 +236,69 @@ export const getMe = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/auth/me — Cập nhật thông tin cá nhân (tên, avatar, nativeLanguage)
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateProfile = async (req, res) => {
+  try {
+    const { name, avatarUrl, nativeLanguage } = req.body;
+    const user = await userRepo.findUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (name !== undefined) user.name = name;
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+    if (nativeLanguage !== undefined) user.nativeLanguage = nativeLanguage;
+
+    await userRepo.saveUser(user);
+
+    return res.status(200).json({
+      success: true,
+      data: { user: formatUserResponse(user) },
+    });
+  } catch (err) {
+    console.error("[updateProfile]", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/auth/settings — Cập nhật cài đặt học tập
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateSettings = async (req, res) => {
+  try {
+    const user = await userRepo.findUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const allowedFields = [
+      "dailyNewWordLimit",
+      "dailyReviewLimit",
+      "reminderTimes",
+      "learningDays",
+      "interfaceLanguage",
+    ];
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        user.settings[field] = req.body[field];
+      }
+    });
+
+    await userRepo.saveUser(user);
+
+    return res.status(200).json({
+      success: true,
+      data: { settings: user.settings },
+    });
+  } catch (err) {
+    console.error("[updateSettings]", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 

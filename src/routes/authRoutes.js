@@ -6,6 +6,8 @@ import {
   refreshToken,
   logout,
   getMe,
+  updateProfile,
+  updateSettings,
   changePassword,
   forgotPassword,
   resetPassword,
@@ -33,6 +35,8 @@ router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 
 // ── Protected routes (cần đăng nhập) ────────────────────────────
 router.get("/me", protect, getMe);
+router.patch("/me", protect, updateProfile);
+router.patch("/settings", protect, updateSettings);
 router.post("/logout", protect, logout);
 router.post(
   "/change-password",

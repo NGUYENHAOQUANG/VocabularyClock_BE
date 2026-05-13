@@ -6,7 +6,8 @@ import {
   getReviewSetWords,
   getReviewHistory,
   markWordRemembered,
-  completeSetReview
+  completeSetReview,
+  getUserSets,
 } from "../controllers/reviewController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -22,6 +23,7 @@ router.get("/dashboard", getDashboardStats);
 router.get("/history", getReviewHistory);
 router.get("/learned-words", getLearnedWords);
 router.get("/due-tasks", getDueTasks);
+router.get("/sets", getUserSets);
 router.get("/sets/:setId/words", getReviewSetWords);
 
 // ── POST ───────────────────────────────────────────────────────
