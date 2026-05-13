@@ -42,13 +42,12 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-UserSchema.pre("save", async function (next) {
+UserSchema.pre("save", async function () {
   // Chỉ hash password nếu user có nhập password (authType local)
   if ((this.isModified("password") || this.isNew) && this.password) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
-  next();
 });
 
 UserSchema.methods.comparePassword = async function (password) {

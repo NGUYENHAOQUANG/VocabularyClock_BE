@@ -12,6 +12,10 @@ export const findUserById = (id) => {
   return User.findById(id);
 };
 
+export const findUserByIdWithSecrets = (id) => {
+  return User.findById(id).select("+password +refreshToken");
+};
+
 export const findUserByResetToken = (token) => {
   return User.findOne({
     resetPasswordToken: token,

@@ -119,10 +119,10 @@ export const googleAuth = async (req, res) => {
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
-    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+    let user = await userRepo.findUserByEmail(email);
 
     if (!user) {
-      user = await User.create({
+      user = await userRepo.createUser({
         googleId,
         email,
         name,
@@ -139,7 +139,7 @@ export const googleAuth = async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     user.refreshToken = refreshToken;
-    await user.save();
+    await userRepo.saveUser(user);
 
     return res.status(200).json({
       success: true,
@@ -172,7 +172,7 @@ export const refreshToken = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
-    const user = await User.findById(decoded.id).select("+refreshToken");
+    const user = await userRepo.findUserByIdWithSecrets(decoded.id);
     if (!user || user.refreshToken !== token) {
       return res
         .status(401)
@@ -183,7 +183,7 @@ export const refreshToken = async (req, res) => {
     const newRefreshToken = generateRefreshToken(user._id);
 
     user.refreshToken = newRefreshToken;
-    await user.save();
+    await userRepo.saveUser(user);
 
     return res.status(200).json({
       success: true,
@@ -309,24 +309,24 @@ export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user.id).select("+password");
+    const user = await userRepo.findUserByIdWithSecrets(req.user.id);
     if (!user || !user.password) {
-      return res.status(400).json({
-        success: false,
-        message: "This account uses Google sign-in and has no password",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user or password not set" });
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res
         .status(401)
-        .json({ success: false, message: "Current password is incorrect" });
+        .json({ success: false, message: "Incorrect current password" });
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
-    user.refreshToken = null;
-    await user.save();
+    user.refreshToken = null; // Bắt đăng nhập lại ở thiết bị khác
+
+    await userRepo.saveUser(user);
 
     return res.status(200).json({
       success: true,
