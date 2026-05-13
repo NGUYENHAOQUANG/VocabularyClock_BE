@@ -23,12 +23,7 @@ export const findUserByIdWithSecrets = (id) => {
   return User.findById(id).select("+password +refreshToken");
 };
 
-export const findUserByResetOTP = (otp) => {
-  return User.findOne({
-    passwordResetToken: otp,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-};
+
 
 export const createUser = (data) => {
   return User.create(data);

@@ -10,6 +10,7 @@ import {
   updateSettings,
   changePassword,
   forgotPassword,
+  verifyOtp,
   resetPassword,
   deleteAccount,
   deleteData,
@@ -21,6 +22,7 @@ import {
   loginSchema,
   googleAuthSchema,
   forgotPasswordSchema,
+  verifyOtpSchema,
   resetPasswordSchema,
   changePasswordSchema,
 } from "../validations/authValidation.js";
@@ -33,6 +35,7 @@ router.post("/login", validate(loginSchema), login);
 router.post("/google", validate(googleAuthSchema), googleAuth);
 router.post("/refresh-token", refreshToken);
 router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/verify-otp", validate(verifyOtpSchema), verifyOtp);
 router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 
 // ── Protected routes (cần đăng nhập) ────────────────────────────

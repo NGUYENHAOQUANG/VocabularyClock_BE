@@ -55,4 +55,9 @@ UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
+UserSchema.methods.compareOTP = async function (otp) {
+  if (!this.passwordResetToken) return false;
+  return await bcrypt.compare(otp, this.passwordResetToken);
+};
+
 export default mongoose.model('User', UserSchema);

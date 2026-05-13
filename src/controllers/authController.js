@@ -36,7 +36,11 @@ export const register = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    user.refreshToken = refreshToken;
+    const hashedRefreshToken = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+    user.refreshToken = hashedRefreshToken;
     await userRepo.saveUser(user);
 
     return res.status(201).json({
@@ -86,7 +90,11 @@ export const login = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    user.refreshToken = refreshToken;
+    const hashedRefreshToken = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+    user.refreshToken = hashedRefreshToken;
     await userRepo.saveUser(user);
 
     return res.status(200).json({
@@ -139,7 +147,11 @@ export const googleAuth = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    user.refreshToken = refreshToken;
+    const hashedRefreshToken = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+    user.refreshToken = hashedRefreshToken;
     await userRepo.saveUser(user);
 
     return res.status(200).json({
@@ -174,7 +186,9 @@ export const refreshToken = async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
     const user = await userRepo.findUserByIdWithSecrets(decoded.id);
-    if (!user || user.refreshToken !== token) {
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    if (!user || user.refreshToken !== hashedToken) {
       return res
         .status(401)
         .json({ success: false, message: "Invalid refresh token" });
@@ -183,7 +197,11 @@ export const refreshToken = async (req, res) => {
     const newAccessToken = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
 
-    user.refreshToken = newRefreshToken;
+    const hashedNewRefreshToken = crypto
+      .createHash("sha256")
+      .update(newRefreshToken)
+      .digest("hex");
+    user.refreshToken = hashedNewRefreshToken;
     await userRepo.saveUser(user);
 
     return res.status(200).json({
@@ -204,8 +222,11 @@ export const refreshToken = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const logout = async (req, res) => {
   try {
-    await userRepo.findUserById(req.user.id).then(u => {
-      if (u) { u.refreshToken = null; return userRepo.saveUser(u); }
+    await userRepo.findUserById(req.user.id).then((u) => {
+      if (u) {
+        u.refreshToken = null;
+        return userRepo.saveUser(u);
+      }
     });
     return res
       .status(200)
@@ -248,7 +269,9 @@ export const updateProfile = async (req, res) => {
     const { name, avatarUrl, nativeLanguage } = req.body;
     const user = await userRepo.findUserById(req.user.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (name !== undefined) user.name = name;
@@ -263,7 +286,9 @@ export const updateProfile = async (req, res) => {
     });
   } catch (err) {
     console.error("[updateProfile]", err);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -274,7 +299,9 @@ export const updateSettings = async (req, res) => {
   try {
     const user = await userRepo.findUserById(req.user.id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const allowedFields = [
@@ -299,7 +326,9 @@ export const updateSettings = async (req, res) => {
     });
   } catch (err) {
     console.error("[updateSettings]", err);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -324,7 +353,7 @@ export const changePassword = async (req, res) => {
         .json({ success: false, message: "Incorrect current password" });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    user.password = newPassword;
     user.refreshToken = null; // Bắt đăng nhập lại ở thiết bị khác
 
     await userRepo.saveUser(user);
@@ -357,8 +386,13 @@ export const forgotPassword = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.passwordResetToken = otp;
-    user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Hash OTP before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedOtp = await bcrypt.hash(otp, salt);
+
+    user.passwordResetToken = hashedOtp;
+    user.passwordResetExpires = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
     await userRepo.saveUser(user);
 
     // Bắt đầu gửi email (có xử lý nếu chưa cấu hình .env)
@@ -366,7 +400,9 @@ export const forgotPassword = async (req, res) => {
       if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
         await sendPasswordResetEmail(email, otp);
       } else {
-        console.warn('⚠️ [CẢNH BÁO]: Chưa cấu hình EMAIL_USER và EMAIL_PASS trong .env! Bỏ qua bước gửi email thật.');
+        console.warn(
+          "⚠️ [CẢNH BÁO]: Chưa cấu hình EMAIL_USER và EMAIL_PASS trong .env! Bỏ qua bước gửi email thật.",
+        );
       }
     } catch (emailError) {
       console.error("[forgotPassword] Lỗi gửi email:", emailError);
@@ -376,7 +412,10 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    console.log(`[forgotPassword] MÃ OTP ĐẶT LẠI MẬT KHẨU CHO EMAIL ${email}:`, otp);
+    console.log(
+      `[forgotPassword] MÃ OTP ĐẶT LẠI MẬT KHẨU CHO EMAIL ${email}:`,
+      otp,
+    );
 
     return res.status(200).json({
       success: true,
@@ -398,9 +437,21 @@ export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
 
-    const user = await userRepo.findUserByResetOTP(otp);
+    const user = await userRepo.findUserByEmail(email);
 
-    if (!user || user.email !== email) {
+    if (
+      !user ||
+      !user.passwordResetToken ||
+      user.passwordResetExpires < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Mã OTP không hợp lệ hoặc đã hết hạn.",
+      });
+    }
+
+    const isMatch = await user.compareOTP(otp);
+    if (!isMatch) {
       return res.status(400).json({
         success: false,
         message: "Mã OTP không hợp lệ hoặc đã hết hạn.",
@@ -419,6 +470,46 @@ export const resetPassword = async (req, res) => {
     });
   } catch (err) {
     console.error("[resetPassword]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/auth/verify-otp
+// ─────────────────────────────────────────────────────────────────────────────
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await userRepo.findUserByEmail(email);
+
+    if (
+      !user ||
+      !user.passwordResetToken ||
+      user.passwordResetExpires < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Mã OTP không hợp lệ hoặc đã hết hạn.",
+      });
+    }
+
+    const isMatch = await user.compareOTP(otp);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Mã OTP không hợp lệ hoặc đã hết hạn.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Mã OTP hợp lệ.",
+    });
+  } catch (err) {
+    console.error("[verifyOtp]", err);
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });

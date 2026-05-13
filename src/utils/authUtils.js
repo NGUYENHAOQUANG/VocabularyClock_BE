@@ -28,6 +28,7 @@ export const formatUserResponse = (user) => ({
   avatarUrl: user.avatarUrl,
   nativeLanguage: user.nativeLanguage,
   isEmailVerified: user.isEmailVerified,
+  googleId: user.googleId,   // Có giá trị nếu tài khoản đăng nhập bằng Google
   settings: user.settings,
   createdAt: user.createdAt,
 });

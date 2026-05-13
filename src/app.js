@@ -65,7 +65,7 @@ app.use('/api', globalLimiter);
 // Tối đa 10 request / 15 phút / IP → chống brute-force đăng nhập
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: isProd ? 10 : 100, // Nới lỏng trong môi trường dev để dễ test
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many authentication attempts, please try again later.' },
