@@ -392,7 +392,9 @@ export const forgotPassword = async (req, res) => {
     const hashedOtp = await bcrypt.hash(otp, salt);
 
     user.passwordResetToken = hashedOtp;
-    user.passwordResetExpires = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
+    user.passwordResetExpires = new Date(
+      Date.now() + parseInt(process.env.OTP_EXPIRES_MINUTES) * 60 * 1000,
+    );
     await userRepo.saveUser(user);
 
     // Bắt đầu gửi email (có xử lý nếu chưa cấu hình .env)
