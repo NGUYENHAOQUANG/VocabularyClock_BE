@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 export const createTopicSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
+  name: z.string().min(1, "Tên chủ đề không được để trống").max(100),
   description: z.string().optional(),
-  typeId: z.enum(["vocabulary", "collocation", "structure", "idiom", "phrasal_verb"], {
-    errorMap: () => ({ message: "Invalid topic type" }),
-  }),
+  // typeId là optional, mặc định 'vocabulary' nếu không gửi
+  typeId: z.enum(["vocabulary", "collocation", "structure", "idiom", "phrasal_verb"])
+    .optional()
+    .default("vocabulary"),
 });
+
 
 export const createSetSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -16,13 +18,15 @@ export const createSetSchema = z.object({
 
 export const createVocabSchema = z.object({
   setId: z.string().min(1, "Set ID is required"),
-  content: z.string().min(1, "Content is required"),
-  type: z.enum(["vocabulary", "collocation", "structure", "idiom", "phrasal_verb"], {
-    errorMap: () => ({ message: "Invalid vocab type" }),
-  }),
-  meaning: z.string().min(1, "Meaning is required"),
+  content: z.string().min(1, "Nội dung không được để trống"),
+  // type là optional, mặc định 'vocabulary'
+  type: z.enum(["vocabulary", "collocation", "structure", "idiom", "phrasal_verb"])
+    .optional()
+    .default("vocabulary"),
+  meaning: z.string().min(1, "Nghĩa không được để trống"),
   phonetic: z.string().optional(),
   partOfSpeech: z.string().optional(),
+
   examples: z
     .array(
       z.object({
