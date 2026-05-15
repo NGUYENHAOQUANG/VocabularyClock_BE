@@ -175,6 +175,7 @@ export const getUserSetsData = async (userId) => {
   const progresses = await userSetProgressRepo.findAllProgressByUser(userId);
   return progresses.map((p) => ({
     _id: p.setId?._id,
+    topicId: p.setId?.topicId,
     name: p.setId?.name,
     itemCount: p.setId?.itemCount,
     image: p.setId?.image,
