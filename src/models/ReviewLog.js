@@ -19,64 +19,56 @@ const ReviewLogSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    vocabId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Vocabulary',
-      required: true,
-    },
-    setId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'VocabSet',
-      required: true,
-      index: true,
-    },
-
-    // ── Gộp các lần ôn trong cùng 1 phiên ─────────────────────────
-    // Dùng để group thành ReviewHistorySession trên FE
+    // ── Session (Mã Nhóm) ─────────────────────────────────────────
     sessionId: { type: String, required: true },
     sessionType: { 
       type: String, 
-      enum: ['learning', 'review'], 
+      enum: ['learning', 'review', 'practice'], 
       required: true 
     },
 
-    // ── Kết quả đánh giá của người dùng ────────────────────────────
-    result: {
-      type: String,
-      enum: [
-        'again',   // Chưa nhớ – học lại ngay
-        'hard',    // Nhớ khó – ôn sớm hơn
-        'good',    // Nhớ được – ôn đúng lịch
-        'easy',    // Nhớ rất tốt – ôn muộn hơn
-      ],
-      required: true,
-    },
-
-    // ── Hình thức ôn tập ────────────────────────────────────────────
-    // Khớp với FE: ReviewHistorySession.methods[].methodId
-    actionType: {
-      type: String,
-      enum: [
-        'flashcard',  // Lật thẻ
-        'quiz',       // Trắc nghiệm (chọn đáp án)
-        'writing',    // Viết lại câu (tính năng mới)
-        'typing',     // Gõ lại từ
-      ],
-      required: true,
-    },
-
-    // ── Thống kê hiệu suất ──────────────────────────────────────────
-    responseTime: { type: Number },  // Thời gian phản hồi (ms) – dùng cho analytics
+    // ── Mảng chứa tất cả các câu trả lời (Gộp Mảng - Tối ưu 50x) ──
+    logs: [
+      {
+        vocabId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Vocabulary',
+          required: true,
+        },
+        result: {
+          type: String,
+          enum: [
+            'again',   // Chưa nhớ – học lại ngay
+            'hard',    // Nhớ khó – ôn sớm hơn
+            'good',    // Nhớ được – ôn đúng lịch
+            'easy',    // Nhớ rất tốt – ôn muộn hơn
+          ],
+          required: true,
+        },
+        actionType: {
+          type: String,
+          enum: [
+            'flashcard',  // Lật thẻ
+            'quiz',       // Trắc nghiệm (chọn đáp án)
+            'writing',    // Viết lại câu (tính năng mới)
+            'typing',     // Gõ lại từ
+            'picture',    // Nối hình
+          ],
+          required: true,
+        },
+        responseTime: { type: Number },
+      }
+    ],
 
     // ── Timestamp ───────────────────────────────────────────────────
     reviewedAt: { type: Date, default: Date.now, index: true },
   },
-  { timestamps: false }  // reviewedAt tự quản lý
+  { timestamps: false }
 );
 
-// Index tổng hợp để aggregate thống kê nhanh
+// Index tối ưu: Query theo User, theo SessionId
 ReviewLogSchema.index({ userId: 1, reviewedAt: -1 });
-ReviewLogSchema.index({ userId: 1, vocabId: 1, result: 1 });
-ReviewLogSchema.index({ sessionId: 1 });
+// unique: mỗi session chỉ có đúng 1 document (logic gộp mảng bằng upsert)
+ReviewLogSchema.index({ sessionId: 1 }, { unique: true });
 
 export default mongoose.model('ReviewLog', ReviewLogSchema);

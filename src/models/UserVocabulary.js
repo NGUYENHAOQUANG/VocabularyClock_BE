@@ -54,6 +54,22 @@ const UserVocabularySchema = new mongoose.Schema(
     // ── Đánh dấu thủ công ──────────────────────────────────────────
     isMarkedRemembered: { type: Boolean, default: false }, // Nút "Đã nhớ" trên SetDetailScreen
 
+    // ── Thống kê phân tích chuyên sâu (Analytics Counters) ────────
+    // Cho phép truy vấn siêu tốc: "Từ sai nhiều nhất", "Kỹ năng yếu nhất của User",...
+    stats: {
+      totalAttempts: { type: Number, default: 0 },   // Tổng số lần tương tác
+      correctCount: { type: Number, default: 0 },    // Tổng số lần đúng (good, easy)
+      incorrectCount: { type: Number, default: 0 },  // Tổng số lần sai (again, hard)
+      // Thống kê chi tiết theo từng kỹ năng:
+      byAction: {
+        flashcard: { correct: { type: Number, default: 0 }, incorrect: { type: Number, default: 0 } },
+        quiz:      { correct: { type: Number, default: 0 }, incorrect: { type: Number, default: 0 } },
+        typing:    { correct: { type: Number, default: 0 }, incorrect: { type: Number, default: 0 } },
+        writing:   { correct: { type: Number, default: 0 }, incorrect: { type: Number, default: 0 } },
+        picture:   { correct: { type: Number, default: 0 }, incorrect: { type: Number, default: 0 } }
+      }
+    },
+
     // ── Timestamps học tập ─────────────────────────────────────────
     // Khớp với FE: LearnedWord.firstLearnedAt, LearnedWord.lastReviewedAt
     firstLearnedAt: { type: Date, default: Date.now },

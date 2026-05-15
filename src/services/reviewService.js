@@ -6,11 +6,20 @@ import * as vocabularyRepo from "../repositories/vocabularyRepository.js";
 import * as userVocabularyRepo from "../repositories/userVocabularyRepository.js";
 import * as srsService from "./srsService.js";
 
-const STATUS_LEVELS = ["new", "vague", "recognized", "applicable", "fluent", "stabilized", "mastered"];
+const STATUS_LEVELS = [
+  "new",
+  "vague",
+  "recognized",
+  "applicable",
+  "fluent",
+  "stabilized",
+  "mastered",
+];
 const userObjectId = (id) => new mongoose.Types.ObjectId(id);
 
 export const getDashboardStatsData = async (userId) => {
-  const statusAggregation = await userSetProgressRepo.aggregateStatusStats(userId);
+  const statusAggregation =
+    await userSetProgressRepo.aggregateStatusStats(userId);
 
   const statusCounts = STATUS_LEVELS.reduce((acc, status) => {
     const found = statusAggregation.find((s) => s._id === status);
@@ -20,33 +29,56 @@ export const getDashboardStatsData = async (userId) => {
 
   const totalVocab = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-  const correctAnswers = await reviewLogRepo.countAnswersByResult(userId, ["good", "easy"]);
-  const incorrectAnswers = await reviewLogRepo.countAnswersByResult(userId, ["again", "hard"]);
+  const correctAnswers = await reviewLogRepo.countAnswersByResult(userId, [
+    "good",
+    "easy",
+  ]);
+  const incorrectAnswers = await reviewLogRepo.countAnswersByResult(userId, [
+    "again",
+    "hard",
+  ]);
   const totalReviews = await reviewLogRepo.countTotalReviews(userId);
 
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
-  const dueSetsAggregation = await userSetProgressRepo.aggregateDueWordsCount(userId, endOfToday);
-  const dueWordsCount = dueSetsAggregation.length > 0 ? dueSetsAggregation[0].dueWordsCount : 0;
+  const dueSetsAggregation = await userSetProgressRepo.aggregateDueWordsCount(
+    userId,
+    endOfToday,
+  );
+  const dueWordsCount =
+    dueSetsAggregation.length > 0 ? dueSetsAggregation[0].dueWordsCount : 0;
 
-  return { totalVocab, statusCounts, accuracyStats: { correctAnswers, incorrectAnswers, totalReviews }, dueWordsCount };
+  return {
+    totalVocab,
+    statusCounts,
+    accuracyStats: { correctAnswers, incorrectAnswers, totalReviews },
+    dueWordsCount,
+  };
 };
 
 export const getDueTasksData = async (userId) => {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
-  const dueProgresses = await userSetProgressRepo.findDueProgresses(userId, endOfToday);
+  const dueProgresses = await userSetProgressRepo.findDueProgresses(
+    userId,
+    endOfToday,
+  );
 
   if (!dueProgresses.length) return [];
 
-  const dueSetIds = dueProgresses.map(p => p.setId._id);
-  const tasks = await scheduledTaskRepo.findTasksWithSpecificSets(userId, dueSetIds);
+  const dueSetIds = dueProgresses.map((p) => p.setId._id);
+  const tasks = await scheduledTaskRepo.findTasksWithSpecificSets(
+    userId,
+    dueSetIds,
+  );
 
-  return dueProgresses.map(progress => {
+  return dueProgresses.map((progress) => {
     const set = progress.setId;
-    const parentTask = tasks.find(t => t.setIds.map(id => id.toString()).includes(set._id.toString()));
+    const parentTask = tasks.find((t) =>
+      t.setIds.map((id) => id.toString()).includes(set._id.toString()),
+    );
 
     return {
       _id: set._id,
@@ -56,7 +88,13 @@ export const getDueTasksData = async (userId) => {
       coverImage: set.coverImage,
       status: progress.status,
       reviewCount: progress.reviewCount,
-      taskInfo: parentTask ? { taskId: parentTask._id, time: parentTask.time, name: parentTask.name } : null
+      taskInfo: parentTask
+        ? {
+            taskId: parentTask._id,
+            time: parentTask.time,
+            name: parentTask.name,
+          }
+        : null,
     };
   });
 };
@@ -64,48 +102,100 @@ export const getDueTasksData = async (userId) => {
 export const getReviewHistoryData = async (userId) => {
   const history = await reviewLogRepo.getHistoryAggregation(userId);
 
-  return history.map(session => {
-    const { logs } = session;
+  const ACTION_LABELS = {
+    flashcard: 'Flashcard',
+    quiz: 'Trắc nghiệm',
+    typing: 'Gõ từ',
+    writing: 'Viết câu',
+    picture: 'Nối hình',
+  };
+
+  return history.map((session) => {
     const methodsMap = {};
     const incorrectVocabIds = new Set();
+    const logs = session.logs || [];
 
-    logs.forEach(log => {
-      if (!methodsMap[log.actionType]) methodsMap[log.actionType] = { correct: 0, incorrect: 0 };
+    logs.forEach((log) => {
+      if (!log.actionType) return;
+      if (!methodsMap[log.actionType])
+        methodsMap[log.actionType] = { correct: 0, incorrect: 0 };
       if (log.result === 'good' || log.result === 'easy') {
         methodsMap[log.actionType].correct += 1;
       } else {
         methodsMap[log.actionType].incorrect += 1;
-        incorrectVocabIds.add(log.vocabId.toString());
+        if (log.vocabId) incorrectVocabIds.add(log.vocabId.toString());
       }
     });
 
-    const methods = Object.keys(methodsMap).map(type => {
-      let label = 'Unknown';
-      if (type === 'flashcard') label = 'Flashcard';
-      else if (type === 'quiz') label = 'Trắc nghiệm';
-      else if (type === 'typing') label = 'Gõ từ';
-      else if (type === 'writing') label = 'Viết câu';
-      return { type, label, correct: methodsMap[type].correct, incorrect: methodsMap[type].incorrect };
-    });
+    const methods = Object.keys(methodsMap).map((type) => ({
+      type,
+      label: ACTION_LABELS[type] || type,
+      correct: methodsMap[type].correct,
+      incorrect: methodsMap[type].incorrect,
+    }));
 
     return {
-      sessionId: session._id,
+      sessionId: session.sessionId,
       sessionType: session.sessionType,
-      setName: session.setDetails.name,
+      setName: session.setDetails?.name || 'Bộ từ không xác định',
       reviewedAt: session.reviewedAt,
       methods,
       incorrectCount: incorrectVocabIds.size,
-      incorrectVocabIds: Array.from(incorrectVocabIds)
+      incorrectVocabIds: Array.from(incorrectVocabIds),
+    };
+  });
+};
+
+/**
+ * GET /review/session/:sessionId/words
+ * Trả về danh sách từ vựng thực tế trong 1 phiên học cùng trạng thái đúng/sai
+ */
+export const getSessionWordsData = async (sessionId, userId) => {
+  const log = await reviewLogRepo.findBySessionId(sessionId, userId);
+  if (!log || !log.logs || log.logs.length === 0) return [];
+
+  // Gom vocabIds và xác định đúng/sai
+  const vocabResultMap = {};   // vocabId -> { isCorrect, wrongCount }
+  log.logs.forEach((entry) => {
+    const id = entry.vocabId.toString();
+    const isCorrect = entry.result === 'good' || entry.result === 'easy';
+    if (!vocabResultMap[id]) {
+      vocabResultMap[id] = { isCorrect, wrongCount: 0 };
+    }
+    if (!isCorrect) {
+      vocabResultMap[id].isCorrect = false;
+      vocabResultMap[id].wrongCount += 1;
+    }
+  });
+
+  const vocabIds = Object.keys(vocabResultMap);
+  const words = await vocabularyRepo.findByIds(vocabIds);
+
+  return words.map((w) => {
+    const id = w._id.toString();
+    const result = vocabResultMap[id] ?? { isCorrect: true, wrongCount: 0 };
+    return {
+      _id: w._id,
+      content: w.content,
+      phonetic: w.phonetic ?? '',
+      meaning: w.meaning ?? '',
+      isCorrect: result.isCorrect,
+      wrongCount: result.wrongCount,
     };
   });
 };
 
 export const getReviewSetWordsData = async (setId, userId) => {
   const words = await vocabularyRepo.findWordsBySet(setId);
-  const userVocabs = await userVocabularyRepo.findUserVocabs(userId, words.map((w) => w._id));
+  const userVocabs = await userVocabularyRepo.findUserVocabs(
+    userId,
+    words.map((w) => w._id),
+  );
 
   return words.map((word) => {
-    const userRecord = userVocabs.find((uv) => uv.vocabId.toString() === word._id.toString());
+    const userRecord = userVocabs.find(
+      (uv) => uv.vocabId.toString() === word._id.toString(),
+    );
     return {
       _id: word._id,
       content: word.content,
@@ -126,20 +216,36 @@ export const markWordRememberedData = async (userId, vocabId, isRemembered) => {
   return userVocabularyRepo.updateRememberedFlag(userId, vocabId, isRemembered);
 };
 
-export const completeSetReviewData = async (userId, setId, sessionType, sessionId, logs) => {
+export const completeSetReviewData = async (
+  userId,
+  setId,
+  sessionType,
+  sessionId,
+  logs,
+) => {
   if (logs && logs.length > 0) {
     const reviewLogs = logs.map((log) => ({
-      userId,
       vocabId: log.vocabId,
-      setId,
-      sessionId,
-      sessionType,
       result: log.result,
       actionType: log.actionType,
       responseTime: log.responseTime || 0,
-      reviewedAt: new Date(),
     }));
-    await reviewLogRepo.insertLogs(reviewLogs);
+    // 1. Lưu log bằng kỹ thuật Gộp mảng (Array Embedding)
+    await reviewLogRepo.upsertSessionLogs(
+      userId,
+      setId,
+      sessionType,
+      sessionId,
+      reviewLogs,
+    );
+
+    // 2. Cập nhật thống kê chuyên sâu (Analytics) cho từng từ
+    await userVocabularyRepo.bulkUpdateStats(userId, logs);
+  }
+
+  // Nếu chỉ là luyện tập (practice) thì không cập nhật tiến độ SRS
+  if (sessionType === "practice") {
+    return { status: "practice", nextReviewDate: null };
   }
 
   let progress = await userSetProgressRepo.findProgress(userId, setId);

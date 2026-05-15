@@ -116,3 +116,7 @@ export const deleteMyVocabData = async (id, userId) => {
 
   return vocab;
 };
+
+export const getAllMySetsData = async (userId) => {
+  return vocabSetRepo.findMySetsAll(userId);
+};

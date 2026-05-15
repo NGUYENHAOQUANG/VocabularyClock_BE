@@ -167,3 +167,21 @@ export const getUserSets = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
+/**
+ * GET /api/review/session/:sessionId/words
+ * Lấy danh sách từ vựng thực tế trong 1 phiên học kèm trạng thái đúng/sai
+ */
+export const getSessionWords = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const words = await reviewService.getSessionWordsData(sessionId, userId);
+    return res.status(200).json({ success: true, data: words });
+  } catch (err) {
+    console.error("[getSessionWords]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};

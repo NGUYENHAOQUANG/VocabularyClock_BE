@@ -12,6 +12,7 @@ import {
   createMyVocab,
   updateMyVocab,
   deleteMyVocab,
+  getAllMySets,
 } from "../controllers/myWordsController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -43,8 +44,10 @@ router
 router.get("/topics/:id/sets", getMySets);
 
 // ── CRUD Sets ───────────────────────────────────────────────────
+
 router
   .route("/sets")
+  .get(getAllMySets)
   .post(validate(createSetSchema), createMySet);
 
 router

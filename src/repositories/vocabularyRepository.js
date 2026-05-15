@@ -4,6 +4,12 @@ export const findWordsBySet = (setId) => {
   return Vocabulary.find({ setId }).lean();
 };
 
+export const findByIds = (ids) => {
+  return Vocabulary.find({ _id: { $in: ids } })
+    .select('content phonetic type meaning examples')
+    .lean();
+};
+
 export const findMyVocabs = (setId, userId) => {
   return Vocabulary.find({ setId, ownerId: userId, isSystemVocab: false })
     .select("-__v -createdAt -updatedAt")

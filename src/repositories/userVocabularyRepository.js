@@ -27,6 +27,28 @@ export const updateRememberedFlag = (userId, vocabId, isRemembered) => {
   );
 };
 
+export const bulkUpdateStats = (userId, logs) => {
+  const bulkOps = logs.map(log => {
+    const isCorrect = log.result === 'good' || log.result === 'easy';
+    const incQuery = {
+      'stats.totalAttempts': 1,
+      ...(isCorrect ? { 'stats.correctCount': 1 } : { 'stats.incorrectCount': 1 }),
+      ...(log.actionType ? {
+        [`stats.byAction.${log.actionType}.${isCorrect ? 'correct' : 'incorrect'}`]: 1
+      } : {})
+    };
+
+    return {
+      updateOne: {
+        filter: { userId, vocabId: log.vocabId },
+        update: { $inc: incQuery }
+      }
+    };
+  });
+
+  return UserVocabulary.bulkWrite(bulkOps);
+};
+
 export const aggregateLearnedWords = (userId, day, status) => {
   const userObjectId = new mongoose.Types.ObjectId(userId);
   let pipeline = [

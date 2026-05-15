@@ -3,39 +3,56 @@ import { ReviewLog } from "../models/index.js";
 
 const userObjectId = (id) => new mongoose.Types.ObjectId(id);
 
-export const countAnswersByResult = (userId, results) => {
-  return ReviewLog.countDocuments({
-    userId,
-    result: { $in: results }
-  });
+export const findBySessionId = (sessionId, userId) => {
+  return ReviewLog.findOne({ sessionId, userId }).lean();
 };
 
-export const countTotalReviews = (userId) => {
-  return ReviewLog.countDocuments({ userId });
+export const countAnswersByResult = async (userId, results) => {
+  const aggr = await ReviewLog.aggregate([
+    { $match: { userId: userObjectId(userId) } },
+    { $unwind: "$logs" },
+    { $match: { "logs.result": { $in: results } } },
+    { $count: "total" }
+  ]);
+  return aggr.length > 0 ? aggr[0].total : 0;
+};
+
+export const countTotalReviews = async (userId) => {
+  const aggr = await ReviewLog.aggregate([
+    { $match: { userId: userObjectId(userId) } },
+    { $project: { logCount: { $size: { $ifNull: ["$logs", []] } } } },
+    { $group: { _id: null, total: { $sum: "$logCount" } } }
+  ]);
+  return aggr.length > 0 ? aggr[0].total : 0;
 };
 
 export const getHistoryAggregation = (userId) => {
   return ReviewLog.aggregate([
     { $match: { userId: userObjectId(userId) } },
-    { $group: {
-        _id: "$sessionId",
-        setId: { $first: "$setId" },
-        sessionType: { $first: "$sessionType" },
-        reviewedAt: { $max: "$reviewedAt" },
-        logs: { $push: "$$ROOT" }
-    }},
     { $sort: { reviewedAt: -1 } },
     { $limit: 50 },
     { $lookup: {
-        from: "vocabsets",
-        localField: "setId",
-        foreignField: "_id",
-        as: "setDetails"
+        from: 'vocabsets',
+        localField: 'setId',
+        foreignField: '_id',
+        as: 'setDetails'
     }},
-    { $unwind: "$setDetails" }
+    { $unwind: { path: '$setDetails', preserveNullAndEmptyArrays: true } }
   ]);
 };
 
+export const upsertSessionLogs = (userId, setId, sessionType, sessionId, logs) => {
+  return ReviewLog.findOneAndUpdate(
+    { sessionId },
+    {
+      $setOnInsert: { userId, setId, sessionType, reviewedAt: new Date() },
+      $push: { logs: { $each: logs } }
+    },
+    { upsert: true, new: true }
+  );
+};
+
 export const insertLogs = (logs) => {
+  // Bị thay thế bằng upsertSessionLogs nhưng vẫn giữ lại để tương thích ngược nếu cần
   return ReviewLog.insertMany(logs);
 };
