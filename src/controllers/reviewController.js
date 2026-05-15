@@ -113,10 +113,12 @@ export const markWordRemembered = async (req, res) => {
 export const completeSetReview = async (req, res) => {
   try {
     const { setId } = req.params;
-    const { sessionType, sessionId, logs } = req.body;
+    const { sessionType, sessionId, logs, setName } = req.body;
     const userId = req.user.id;
 
-    const progress = await reviewService.completeSetReviewData(userId, setId, sessionType, sessionId, logs);
+    console.log("[completeSetReview] DEBUG Payload:", { setId, sessionType, sessionId, setName });
+
+    const progress = await reviewService.completeSetReviewData(userId, setId, sessionType, sessionId, logs, setName);
 
     return res.status(200).json({
       success: true,

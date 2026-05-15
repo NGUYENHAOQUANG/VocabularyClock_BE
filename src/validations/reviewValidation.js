@@ -8,14 +8,25 @@ export const markRememberedSchema = z.object({
 });
 
 export const completeSetSchema = z.object({
-  sessionType: z.enum(['learning', 'review', 'practice'], { required_error: "sessionType is required" }),
+  sessionType: z.enum(["learning", "review", "practice"], {
+    required_error: "sessionType is required",
+  }),
   sessionId: z.string({ required_error: "sessionId is required" }).min(1),
-  logs: z.array(
-    z.object({
-      vocabId: z.string().length(24, "Invalid vocabId"),
-      result: z.enum(['again', 'hard', 'good', 'easy']),
-      actionType: z.enum(['flashcard', 'quiz', 'writing', 'typing', 'picture']),
-      responseTime: z.number().optional()
-    })
-  ).optional() // Không bắt buộc nếu người dùng chưa học gì mà thoát
+  setName: z.string().optional(),
+  logs: z
+    .array(
+      z.object({
+        vocabId: z.string().length(24, "Invalid vocabId"),
+        result: z.enum(["again", "hard", "good", "easy"]),
+        actionType: z.enum([
+          "flashcard",
+          "quiz",
+          "writing",
+          "typing",
+          "picture",
+        ]),
+        responseTime: z.number().optional(),
+      }),
+    )
+    .optional(), // Không bắt buộc nếu người dùng chưa học gì mà thoát
 });

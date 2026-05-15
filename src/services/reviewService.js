@@ -137,7 +137,7 @@ export const getReviewHistoryData = async (userId) => {
     return {
       sessionId: session.sessionId,
       sessionType: session.sessionType,
-      setName: session.setDetails?.name || 'Bộ từ không xác định',
+      setName: session.setName || session.setDetails?.name || 'Bộ từ không xác định',
       reviewedAt: session.reviewedAt,
       methods,
       incorrectCount: incorrectVocabIds.size,
@@ -222,6 +222,7 @@ export const completeSetReviewData = async (
   sessionType,
   sessionId,
   logs,
+  setName
 ) => {
   if (logs && logs.length > 0) {
     const reviewLogs = logs.map((log) => ({
@@ -237,6 +238,7 @@ export const completeSetReviewData = async (
       sessionType,
       sessionId,
       reviewLogs,
+      setName
     );
 
     // 2. Cập nhật thống kê chuyên sâu (Analytics) cho từng từ

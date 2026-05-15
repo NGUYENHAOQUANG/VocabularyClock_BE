@@ -21,11 +21,17 @@ const ReviewLogSchema = new mongoose.Schema(
     },
     // ── Session (Mã Nhóm) ─────────────────────────────────────────
     sessionId: { type: String, required: true },
+    setId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VocabSet',
+    },
     sessionType: { 
       type: String, 
       enum: ['learning', 'review', 'practice'], 
       required: true 
     },
+    // Lưu tên bộ từ (hỗ trợ trường hợp chọn nhiều bộ từ luyện tập cùng lúc)
+    setName: { type: String },
 
     // ── Mảng chứa tất cả các câu trả lời (Gộp Mảng - Tối ưu 50x) ──
     logs: [

@@ -26,8 +26,8 @@ export const countTotalReviews = async (userId) => {
   return aggr.length > 0 ? aggr[0].total : 0;
 };
 
-export const getHistoryAggregation = (userId) => {
-  return ReviewLog.aggregate([
+export const getHistoryAggregation = async (userId) => {
+  const result = await ReviewLog.aggregate([
     { $match: { userId: userObjectId(userId) } },
     { $sort: { reviewedAt: -1 } },
     { $limit: 50 },
@@ -35,17 +35,37 @@ export const getHistoryAggregation = (userId) => {
         from: 'vocabsets',
         localField: 'setId',
         foreignField: '_id',
-        as: 'setDetails'
+        as: 'systemSetDetails'
     }},
-    { $unwind: { path: '$setDetails', preserveNullAndEmptyArrays: true } }
+    { $lookup: {
+        from: 'myvocabsets',
+        localField: 'setId',
+        foreignField: '_id',
+        as: 'mySetDetails'
+    }},
+    { $addFields: {
+        setDetails: { 
+            $ifNull: [ 
+                { $arrayElemAt: ['$systemSetDetails', 0] }, 
+                { $arrayElemAt: ['$mySetDetails', 0] } 
+            ] 
+        }
+    }},
+    { $project: {
+        systemSetDetails: 0,
+        mySetDetails: 0
+    }}
   ]);
+
+  console.log("[getHistoryAggregation] DEBUG Retrieved:", JSON.stringify(result, null, 2));
+  return result;
 };
 
-export const upsertSessionLogs = (userId, setId, sessionType, sessionId, logs) => {
+export const upsertSessionLogs = (userId, setId, sessionType, sessionId, logs, setName) => {
   return ReviewLog.findOneAndUpdate(
     { sessionId },
     {
-      $setOnInsert: { userId, setId, sessionType, reviewedAt: new Date() },
+      $setOnInsert: { userId, setId, sessionType, reviewedAt: new Date(), setName },
       $push: { logs: { $each: logs } }
     },
     { upsert: true, new: true }
