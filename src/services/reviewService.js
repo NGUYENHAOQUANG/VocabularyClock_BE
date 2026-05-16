@@ -201,6 +201,7 @@ export const fixWrongWordsData = async (
     await reviewLogRepo.markLogsAsFixed(userId, originalSessionId, fixedByType);
   }
   if (logs && logs.length > 0) {
+    // fixWrongWords: không biết setId, bỏ qua setOnInsert.setId cho trường hợp này
     await userVocabularyRepo.bulkUpdateStats(userId, logs);
   }
 };
@@ -302,7 +303,14 @@ export const completeSetReviewData = async (
     );
 
     // 2. Cập nhật thống kê chuyên sâu (Analytics) cho từng từ
-    await userVocabularyRepo.bulkUpdateStats(userId, logs);
+    await userVocabularyRepo.bulkUpdateStats(userId, logs, setId);
+
+    // 3. Patch learnedDayOfWeek cho các MyWord records đã tồn tại từ trước
+    //    ($setOnInsert trong bulkUpdateStats chỉ chạy khi INSERT mới)
+    const vocabIds = logs.map((l) => l.vocabId).filter(Boolean);
+    if (vocabIds.length > 0) {
+      await userVocabularyRepo.setLearnedDayIfMissing(userId, vocabIds, setId);
+    }
 
     // 3. Nếu là lượt ôn lại từ sai, đánh dấu isFixed cho những từ được trả lời đúng
     if (originalSessionId) {
@@ -362,11 +370,12 @@ export const getUserSetsData = async (userId, isSystem) => {
   const progresses = await userSetProgressRepo.findAllProgressByUser(userId);
   return progresses
     .filter((p) => {
+      if (!p.setId) return false; // Bỏ qua các progress "mồ côi" (setId đã bị xóa)
       if (isSystem === undefined) return true;
       return (p.setId?.isSystemSet ?? true) === isSystem;
     })
     .map((p) => ({
-      _id: p.setId?._id,
+      _id: p.setId._id.toString(),
       topicId: p.setId?.topicId,
       name: p.setId?.name,
       itemCount: p.setId?.itemCount,
