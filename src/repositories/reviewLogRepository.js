@@ -35,26 +35,9 @@ export const getHistoryAggregation = async (userId) => {
         from: 'vocabsets',
         localField: 'setId',
         foreignField: '_id',
-        as: 'systemSetDetails'
+        as: 'setDetails'
     }},
-    { $lookup: {
-        from: 'myvocabsets',
-        localField: 'setId',
-        foreignField: '_id',
-        as: 'mySetDetails'
-    }},
-    { $addFields: {
-        setDetails: { 
-            $ifNull: [ 
-                { $arrayElemAt: ['$systemSetDetails', 0] }, 
-                { $arrayElemAt: ['$mySetDetails', 0] } 
-            ] 
-        }
-    }},
-    { $project: {
-        systemSetDetails: 0,
-        mySetDetails: 0
-    }}
+    { $unwind: { path: "$setDetails", preserveNullAndEmptyArrays: true } }
   ]);
 
   return result;
