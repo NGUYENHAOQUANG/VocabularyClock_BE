@@ -194,3 +194,17 @@ export const getAllMySets = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+/**
+ * GET /api/my-words/progress
+ * Trả về tiến độ học của từng Topic trong My Words dựa vào UserSetProgress
+ */
+export const getMyWordsProgress = async (req, res) => {
+  try {
+    const data = await myWordsService.getMyWordsProgressData(req.user.id);
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error("[getMyWordsProgress]", err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};

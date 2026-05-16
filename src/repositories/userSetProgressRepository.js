@@ -42,6 +42,11 @@ export const saveProgress = (progressDocument) => {
 /** Lấy tất cả bộ từ mà user đang học (UserSetProgress) kèm thông tin bộ từ */
 export const findAllProgressByUser = (userId) => {
   return UserSetProgress.find({ userId })
-    .populate('setId', 'name itemCount image coverImage topicId')
+    .populate('setId', 'name itemCount image coverImage topicId isSystemSet')
     .lean();
+};
+
+/** Tìm nhiều bản ghi UserSetProgress theo danh sách setIds (dùng cho My Words progress) */
+export const findProgressesBySetIds = (userId, setIds) => {
+  return UserSetProgress.find({ userId, setId: { $in: setIds } }).lean();
 };

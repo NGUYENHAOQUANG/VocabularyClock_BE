@@ -358,17 +358,23 @@ export const completeSetReviewData = async (
 /**
  * Lấy danh sách các bộ từ user đang học (UserSetProgress) — phục vụ LearnedWordsListScreen (Theo bộ từ)
  */
-export const getUserSetsData = async (userId) => {
+export const getUserSetsData = async (userId, isSystem) => {
   const progresses = await userSetProgressRepo.findAllProgressByUser(userId);
-  return progresses.map((p) => ({
-    _id: p.setId?._id,
-    topicId: p.setId?.topicId,
-    name: p.setId?.name,
-    itemCount: p.setId?.itemCount,
-    image: p.setId?.image,
-    coverImage: p.setId?.coverImage,
-    status: p.status,
-    reviewCount: p.reviewCount,
-    nextReviewDate: p.nextReviewDate,
-  }));
+  return progresses
+    .filter((p) => {
+      if (isSystem === undefined) return true;
+      return (p.setId?.isSystemSet ?? true) === isSystem;
+    })
+    .map((p) => ({
+      _id: p.setId?._id,
+      topicId: p.setId?.topicId,
+      name: p.setId?.name,
+      itemCount: p.setId?.itemCount,
+      image: p.setId?.image,
+      coverImage: p.setId?.coverImage,
+      isSystemSet: p.setId?.isSystemSet ?? true,
+      status: p.status,
+      reviewCount: p.reviewCount,
+      nextReviewDate: p.nextReviewDate,
+    }));
 };

@@ -13,6 +13,7 @@ import {
   updateMyVocab,
   deleteMyVocab,
   getAllMySets,
+  getMyWordsProgress,
 } from "../controllers/myWordsController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -49,6 +50,8 @@ router
   .route("/sets")
   .get(getAllMySets)
   .post(validate(createSetSchema), createMySet);
+
+router.get("/progress", getMyWordsProgress);
 
 router
   .route("/sets/:id")

@@ -158,7 +158,10 @@ export const getReviewHistory = async (req, res) => {
 export const getUserSets = async (req, res) => {
   try {
     const userId = req.user.id;
-    const sets = await reviewService.getUserSetsData(userId);
+    // isSystem=true: chỉ lấy bộ từ hệ thống | isSystem=false: chỉ bộ từ cá nhân | không truyền: lấy tất cả
+    const { isSystem } = req.query;
+    const isSystemFilter = isSystem === 'true' ? true : isSystem === 'false' ? false : undefined;
+    const sets = await reviewService.getUserSetsData(userId, isSystemFilter);
     return res.status(200).json({ success: true, data: sets });
   } catch (err) {
     console.error("[getUserSets]", err);
