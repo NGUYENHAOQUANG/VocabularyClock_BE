@@ -13,6 +13,7 @@ export const completeSetSchema = z.object({
   }),
   sessionId: z.string({ required_error: "sessionId is required" }).min(1),
   setName: z.string().optional(),
+  originalSessionId: z.string().optional(),
   logs: z
     .array(
       z.object({

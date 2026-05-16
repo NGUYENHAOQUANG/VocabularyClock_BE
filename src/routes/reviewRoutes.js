@@ -9,6 +9,8 @@ import {
   completeSetReview,
   getUserSets,
   getSessionWords,
+  getSessionWrongWords,
+  fixWrongWords,
 } from "../controllers/reviewController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -27,6 +29,8 @@ router.get("/due-tasks", getDueTasks);
 router.get("/sets", getUserSets);
 router.get("/sets/:setId/words", getReviewSetWords);
 router.get("/session/:sessionId/words", getSessionWords);
+router.get("/session/:sessionId/wrong-words", getSessionWrongWords);
+router.post("/session/:sessionId/fix-words", fixWrongWords);
 
 // ── POST ───────────────────────────────────────────────────────
 router.post("/words/:id/mark-remembered", validate(markRememberedSchema), markWordRemembered);

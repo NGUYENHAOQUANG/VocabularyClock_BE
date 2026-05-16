@@ -113,12 +113,10 @@ export const markWordRemembered = async (req, res) => {
 export const completeSetReview = async (req, res) => {
   try {
     const { setId } = req.params;
-    const { sessionType, sessionId, logs, setName } = req.body;
+    const { sessionType, sessionId, logs, setName, originalSessionId } = req.body;
     const userId = req.user.id;
 
-    console.log("[completeSetReview] DEBUG Payload:", { setId, sessionType, sessionId, setName });
-
-    const progress = await reviewService.completeSetReviewData(userId, setId, sessionType, sessionId, logs, setName);
+    const progress = await reviewService.completeSetReviewData(userId, setId, sessionType, sessionId, logs, setName, originalSessionId);
 
     return res.status(200).json({
       success: true,
@@ -182,6 +180,49 @@ export const getSessionWords = async (req, res) => {
     return res.status(200).json({ success: true, data: words });
   } catch (err) {
     console.error("[getSessionWords]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * GET /api/review/session/:sessionId/wrong-words
+ * Lấy các từ sai chưa được fix của một session, group theo trò chơi
+ */
+export const getSessionWrongWords = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const data = await reviewService.getSessionWrongWordsData(sessionId, userId);
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error("[getSessionWrongWords]", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * POST /api/review/session/:sessionId/fix-words
+ * Đánh dấu isFixed=true cho các từ được trả lời đúng trong lượt ôn lại
+ * Body: { fixedByType: { [actionType]: vocabId[] } }
+ */
+export const fixWrongWords = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId: originalSessionId } = req.params;
+    const { fixedByType, logs } = req.body;
+
+    if (!fixedByType && !logs) {
+      return res.status(200).json({ success: true, message: 'No words to fix or logs to update' });
+    }
+
+    await reviewService.fixWrongWordsData(userId, originalSessionId, fixedByType, logs);
+    return res.status(200).json({ success: true, message: 'Words marked as fixed' });
+  } catch (err) {
+    console.error("[fixWrongWords]", err);
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });

@@ -63,6 +63,7 @@ const ReviewLogSchema = new mongoose.Schema(
           required: true,
         },
         responseTime: { type: Number },
+        isFixed: { type: Boolean, default: false }, // Đã ôn lại và trả lời đúng
       }
     ],
 

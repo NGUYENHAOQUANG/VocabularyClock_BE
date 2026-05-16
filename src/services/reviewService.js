@@ -103,11 +103,11 @@ export const getReviewHistoryData = async (userId) => {
   const history = await reviewLogRepo.getHistoryAggregation(userId);
 
   const ACTION_LABELS = {
-    flashcard: 'Flashcard',
-    quiz: 'Trắc nghiệm',
-    typing: 'Gõ từ',
-    writing: 'Viết câu',
-    picture: 'Nối hình',
+    flashcard: "Flashcards",
+    quiz: "Nhớ nghĩa",
+    typing: "Viết chính xác từ",
+    writing: "Viết lại câu",
+    picture: "Nhìn hình ảnh",
   };
 
   return history.map((session) => {
@@ -119,11 +119,13 @@ export const getReviewHistoryData = async (userId) => {
       if (!log.actionType) return;
       if (!methodsMap[log.actionType])
         methodsMap[log.actionType] = { correct: 0, incorrect: 0 };
-      if (log.result === 'good' || log.result === 'easy') {
+      if (log.result === "good" || log.result === "easy") {
         methodsMap[log.actionType].correct += 1;
       } else {
         methodsMap[log.actionType].incorrect += 1;
-        if (log.vocabId) incorrectVocabIds.add(log.vocabId.toString());
+        // Chỉ đếm là "từ sai cần ôn lại" nếu chưa được fix
+        if (log.vocabId && !log.isFixed)
+          incorrectVocabIds.add(log.vocabId.toString());
       }
     });
 
@@ -137,13 +139,70 @@ export const getReviewHistoryData = async (userId) => {
     return {
       sessionId: session.sessionId,
       sessionType: session.sessionType,
-      setName: session.setName || session.setDetails?.name || 'Bộ từ không xác định',
+      setName:
+        session.setName || session.setDetails?.name || "Bộ từ không xác định",
       reviewedAt: session.reviewedAt,
       methods,
+      // Số từ sai chưa được fix (để quyết định hiện/ẩn nút Ôn lại)
       incorrectCount: incorrectVocabIds.size,
-      incorrectVocabIds: Array.from(incorrectVocabIds),
     };
   });
+};
+
+/**
+ * GET /review/session/:sessionId/wrong-words
+ * Lấy từ sai chưa fix của session, group theo actionType,
+ * kèm thông tin chi tiết của từng từ vựng.
+ */
+export const getSessionWrongWordsData = async (sessionId, userId) => {
+  // grouped: { flashcard: ['id1', 'id2'], quiz: ['id3'] }
+  const grouped = await reviewLogRepo.getSessionWrongWordIds(sessionId, userId);
+  if (Object.keys(grouped).length === 0) return {};
+
+  // Lấy tất cả vocabId unique
+  const allIds = [...new Set(Object.values(grouped).flat())];
+  const words = await vocabularyRepo.findByIds(allIds);
+
+  // Map id -> word object
+  const wordMap = {};
+  words.forEach((w) => {
+    wordMap[w._id.toString()] = w;
+  });
+
+  // Build result: { actionType: [ { _id, content, phonetic, meaning } ] }
+  const result = {};
+  for (const [actionType, ids] of Object.entries(grouped)) {
+    result[actionType] = ids
+      .map((id) => wordMap[id])
+      .filter(Boolean)
+      .map((w) => ({
+        _id: w._id,
+        content: w.content,
+        phonetic: w.phonetic ?? "",
+        meaning: w.meaning ?? "",
+      }));
+  }
+  return result;
+};
+
+/**
+ * POST /review/session/:originalSessionId/fix-words
+ * Đánh dấu isFixed=true cho các từ trả lời đúng trong lượt ôn lại.
+ * Đồng thời cập nhật UserVocabulary stats cho các từ vừa chơi.
+ * KHÔNG tạo ReviewLog mới (tránh làm rác lịch sử).
+ */
+export const fixWrongWordsData = async (
+  userId,
+  originalSessionId,
+  fixedByType,
+  logs,
+) => {
+  if (fixedByType && Object.keys(fixedByType).length > 0) {
+    await reviewLogRepo.markLogsAsFixed(userId, originalSessionId, fixedByType);
+  }
+  if (logs && logs.length > 0) {
+    await userVocabularyRepo.bulkUpdateStats(userId, logs);
+  }
 };
 
 /**
@@ -155,10 +214,10 @@ export const getSessionWordsData = async (sessionId, userId) => {
   if (!log || !log.logs || log.logs.length === 0) return [];
 
   // Gom vocabIds và xác định đúng/sai
-  const vocabResultMap = {};   // vocabId -> { isCorrect, wrongCount }
+  const vocabResultMap = {}; // vocabId -> { isCorrect, wrongCount }
   log.logs.forEach((entry) => {
     const id = entry.vocabId.toString();
-    const isCorrect = entry.result === 'good' || entry.result === 'easy';
+    const isCorrect = entry.result === "good" || entry.result === "easy";
     if (!vocabResultMap[id]) {
       vocabResultMap[id] = { isCorrect, wrongCount: 0 };
     }
@@ -177,8 +236,8 @@ export const getSessionWordsData = async (sessionId, userId) => {
     return {
       _id: w._id,
       content: w.content,
-      phonetic: w.phonetic ?? '',
-      meaning: w.meaning ?? '',
+      phonetic: w.phonetic ?? "",
+      meaning: w.meaning ?? "",
       isCorrect: result.isCorrect,
       wrongCount: result.wrongCount,
     };
@@ -222,7 +281,8 @@ export const completeSetReviewData = async (
   sessionType,
   sessionId,
   logs,
-  setName
+  setName,
+  originalSessionId,
 ) => {
   if (logs && logs.length > 0) {
     const reviewLogs = logs.map((log) => ({
@@ -238,11 +298,30 @@ export const completeSetReviewData = async (
       sessionType,
       sessionId,
       reviewLogs,
-      setName
+      setName,
     );
 
     // 2. Cập nhật thống kê chuyên sâu (Analytics) cho từng từ
     await userVocabularyRepo.bulkUpdateStats(userId, logs);
+
+    // 3. Nếu là lượt ôn lại từ sai, đánh dấu isFixed cho những từ được trả lời đúng
+    if (originalSessionId) {
+      // Group các từ trả lời đúng theo actionType
+      const fixedByType = {};
+      logs.forEach((log) => {
+        if (log.result === "good" || log.result === "easy") {
+          if (!fixedByType[log.actionType]) fixedByType[log.actionType] = [];
+          fixedByType[log.actionType].push(log.vocabId);
+        }
+      });
+      if (Object.keys(fixedByType).length > 0) {
+        await reviewLogRepo.markLogsAsFixed(
+          userId,
+          originalSessionId,
+          fixedByType,
+        );
+      }
+    }
   }
 
   // Nếu chỉ là luyện tập (practice) thì không cập nhật tiến độ SRS

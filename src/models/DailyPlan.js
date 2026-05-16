@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 /**
  * DailyPlan – Kế hoạch học tập theo ngày của từng User.
@@ -15,27 +15,27 @@ const SessionSchema = new mongoose.Schema(
     // Khớp FE: ReviewHistorySession.taskName (populate từ scheduledTaskId)
     scheduledTaskId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'ScheduledTask',
+      ref: "ScheduledTask",
     },
-    taskName: { type: String },                    // Cache tên task để query nhanh
+    taskName: { type: String }, // Cache tên task để query nhanh
 
-    time:        { type: String, required: true },  // "08:00", "20:00"
-    vocabIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Vocabulary' }],
+    time: { type: String, required: true }, // "08:00", "20:00"
+    vocabIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Vocabulary" }],
     actionType: {
       type: String,
-      enum: ['learn', 'review'],                   // Học mới hay ôn tập
-      default: 'review',
+      enum: ["learn", "review"], // Học mới hay ôn tập
+      default: "review",
     },
     // Phương thức ôn tập của session này
     methods: {
       type: [String],
-      enum: ['flashcard', 'meaning', 'write_full_word', 'rewrite', 'picture'],
-      default: ['flashcard'],
+      enum: ["flashcard", "meaning", "write_full_word", "rewrite", "picture"],
+      default: ["flashcard"],
     },
     isCompleted: { type: Boolean, default: false }, // Đã hoàn thành session này chưa
     completedAt: { type: Date },
   },
-  { _id: true }                                    // Cần _id để dùng làm sessionId trong ReviewLog
+  { _id: true }, // Cần _id để dùng làm sessionId trong ReviewLog
 );
 
 const DailyPlanSchema = new mongoose.Schema(
@@ -43,16 +43,24 @@ const DailyPlanSchema = new mongoose.Schema(
     // ── Quan hệ ─────────────────────────────────────────────────────
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true,
     },
 
     // ── Ngày học ────────────────────────────────────────────────────
-    date: { type: Date, required: true },           // Lưu dưới dạng YYYY-MM-DD 00:00:00 UTC
+    date: { type: Date, required: true }, // Lưu dưới dạng YYYY-MM-DD 00:00:00 UTC
     dayOfWeek: {
       type: String,
-      enum: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+      enum: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
     },
 
     // ── Các session trong ngày ──────────────────────────────────────
@@ -60,13 +68,13 @@ const DailyPlanSchema = new mongoose.Schema(
 
     // ── Tổng kết ngày ───────────────────────────────────────────────
     isOverallCompleted: { type: Boolean, default: false },
-    totalWords:         { type: Number, default: 0 },  // Tổng số từ trong ngày
-    completedWords:     { type: Number, default: 0 },  // Số từ đã hoàn thành
+    totalWords: { type: Number, default: 0 }, // Tổng số từ trong ngày
+    completedWords: { type: Number, default: 0 }, // Số từ đã hoàn thành
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Mỗi User chỉ có 1 plan cho 1 ngày
 DailyPlanSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-export default mongoose.model('DailyPlan', DailyPlanSchema);
+export default mongoose.model("DailyPlan", DailyPlanSchema);
