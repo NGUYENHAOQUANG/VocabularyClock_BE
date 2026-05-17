@@ -185,3 +185,96 @@ export const deleteUserVocab = (vocabId, userId) => {
 export const findUserVocabsBySet = (userId, setId) => {
   return UserVocabulary.find({ userId, setId }).lean();
 };
+
+export const aggregateTabStats = async (userId, endOfToday) => {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  return UserVocabulary.aggregate([
+    { $match: { userId: userObjectId, "stats.totalAttempts": { $gt: 0 } } },
+    {
+      $lookup: {
+        from: "usersetprogresses",
+        let: { setId: "$setId", uId: "$userId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$setId", "$$setId"] },
+                  { $eq: ["$userId", "$$uId"] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "setProgress",
+      },
+    },
+    { $unwind: { path: "$setProgress", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        effectiveStatus: { $ifNull: ["$setProgress.status", "new"] },
+        isDue: {
+          $cond: [
+            { $lte: ["$setProgress.nextReviewDate", endOfToday] },
+            true,
+            false,
+          ],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: { vocabType: "$vocabType", status: "$effectiveStatus" },
+        count: { $sum: 1 },
+        totalAttempts: { $sum: "$stats.totalAttempts" },
+        incorrectCount: { $sum: "$stats.incorrectCount" },
+        dueLearn: {
+          $sum: {
+            $cond: [
+              { $and: ["$isDue", { $eq: ["$effectiveStatus", "new"] }] },
+              1,
+              0,
+            ],
+          },
+        },
+        dueReview: {
+          $sum: {
+            $cond: [
+              { $and: ["$isDue", { $ne: ["$effectiveStatus", "new"] }] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+};
+
+export const getWrongWordsByTab = async (userId) => {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  return UserVocabulary.aggregate([
+    { $match: { userId: userObjectId, "stats.incorrectCount": { $gt: 0 } } },
+    { $sort: { "stats.incorrectCount": -1 } },
+    {
+      $lookup: {
+        from: "vocabularies",
+        localField: "vocabId",
+        foreignField: "_id",
+        as: "vocabDetails",
+      },
+    },
+    { $unwind: "$vocabDetails" },
+    {
+      $project: {
+        id: "$vocabId",
+        content: "$vocabDetails.content",
+        meaning: "$vocabDetails.meaning",
+        phonetic: { $ifNull: ["$vocabDetails.phonetic", ""] },
+        againCount: "$stats.incorrectCount",
+        type: { $ifNull: ["$vocabType", "$vocabDetails.type"] },
+      },
+    },
+  ]);
+};
+

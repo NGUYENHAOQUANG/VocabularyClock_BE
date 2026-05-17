@@ -18,43 +18,91 @@ const STATUS_LEVELS = [
 const userObjectId = (id) => new mongoose.Types.ObjectId(id);
 
 export const getDashboardStatsData = async (userId) => {
-  const statusAggregation =
-    await userSetProgressRepo.aggregateStatusStats(userId);
-
-  const statusCounts = STATUS_LEVELS.reduce((acc, status) => {
-    const found = statusAggregation.find((s) => s._id === status);
-    acc[status] = found ? found.totalWords : 0;
-    return acc;
-  }, {});
-
-  const totalVocab = Object.values(statusCounts).reduce((a, b) => a + b, 0);
-
-  const correctAnswers = await reviewLogRepo.countAnswersByResult(userId, [
-    "good",
-    "easy",
-  ]);
-  const incorrectAnswers = await reviewLogRepo.countAnswersByResult(userId, [
-    "again",
-    "hard",
-  ]);
-  const totalReviews = await reviewLogRepo.countTotalReviews(userId);
-
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
-  const dueSetsAggregation = await userSetProgressRepo.aggregateDueWordsCount(
-    userId,
-    endOfToday,
-  );
-  const dueWordsCount =
-    dueSetsAggregation.length > 0 ? dueSetsAggregation[0].dueWordsCount : 0;
+  const [statsAggr, wrongWordsList] = await Promise.all([
+    userVocabularyRepo.aggregateTabStats(userId, endOfToday),
+    userVocabularyRepo.getWrongWordsByTab(userId),
+  ]);
 
-  return {
-    totalVocab,
-    statusCounts,
-    accuracyStats: { correctAnswers, incorrectAnswers, totalReviews },
-    dueWordsCount,
-  };
+  const TAB_TYPES = ["vocabulary", "collocation", "idiom", "phrasal_verb"];
+  const STATUS_LEVELS = [
+    "new",
+    "vague",
+    "recognized",
+    "applicable",
+    "fluent",
+    "stabilized",
+    "mastered",
+  ];
+
+  // Khởi tạo map cho các tab
+  const tabsMap = {};
+
+  ["all", ...TAB_TYPES].forEach((tabId) => {
+    tabsMap[tabId] = {
+      tabId,
+      tabLabel:
+        tabId === "all"
+          ? "All"
+          : tabId === "phrasal_verb"
+          ? "Phrasal Verb"
+          : tabId.charAt(0).toUpperCase() + tabId.slice(1),
+      new: 0,
+      vague: 0,
+      recognized: 0,
+      applicable: 0,
+      fluent: 0,
+      stabilized: 0,
+      mastered: 0,
+      dueLearnCount: 0,
+      dueReviewCount: 0,
+      wrongWordCount: 0,
+      wrongWords: [],
+      againCount: 0,
+      totalReviews: 0,
+    };
+  });
+
+  // Phân bổ dữ liệu statsAggr
+  statsAggr.forEach((item) => {
+    const vType = item._id.vocabType || "vocabulary";
+    const status = item._id.status || "new";
+
+    if (tabsMap[vType]) {
+      tabsMap[vType][status] += item.count;
+      tabsMap[vType].totalReviews += item.totalAttempts;
+      tabsMap[vType].againCount += item.incorrectCount;
+      tabsMap[vType].dueLearnCount += item.dueLearn;
+      tabsMap[vType].dueReviewCount += item.dueReview;
+    }
+
+    tabsMap.all[status] += item.count;
+    tabsMap.all.totalReviews += item.totalAttempts;
+    tabsMap.all.againCount += item.incorrectCount;
+    tabsMap.all.dueLearnCount += item.dueLearn;
+    tabsMap.all.dueReviewCount += item.dueReview;
+  });
+
+  // Phân bổ wrongWordsList
+  wrongWordsList.forEach((word) => {
+    const vType = word.type || "vocabulary";
+    if (tabsMap[vType]) {
+      tabsMap[vType].wrongWords.push(word);
+      tabsMap[vType].wrongWordCount = tabsMap[vType].wrongWords.length;
+    }
+    tabsMap.all.wrongWords.push(word);
+    tabsMap.all.wrongWordCount = tabsMap.all.wrongWords.length;
+  });
+
+  return [
+    tabsMap.all,
+    tabsMap.vocabulary,
+    tabsMap.collocation,
+    tabsMap.idiom,
+    tabsMap.phrasal_verb,
+  ];
 };
 
 export const getDueTasksData = async (userId) => {
